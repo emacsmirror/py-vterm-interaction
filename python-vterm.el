@@ -67,7 +67,7 @@
   "A major mode for inferior Python REPL."
   :group 'python)
 
-(defvar-local python-vterm-repl-program "ipython"
+(defvar-local python-vterm-repl-program "python"
   "Name of the command for executing Python code.
 Maybe either a command in the path, like python
 or an absolute path name, like /usr/local/bin/python

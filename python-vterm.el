@@ -360,7 +360,7 @@ This is equivalent to running `%run <buffer-file-name>` in the python vterm buff
   `((,(kbd "C-c C-z") . python-vterm-switch-to-repl-buffer)
     (,(kbd "C-c C-c") . python-vterm-send-region-or-current-line)
     (,(kbd "C-c C-b") . python-vterm-send-buffer)
-    (,(kbd "C-c C-r") . python-vterm-run-buffer-file)
+    (,(kbd "C-c C-r") . python-vterm-send-run-buffer-file)
     (,(kbd "C-c C-d") . python-vterm-send-cd-to-buffer-directory)))
 
 

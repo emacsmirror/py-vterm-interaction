@@ -40,6 +40,21 @@ Both of the above operations open a REPL with the default session name =main=. Y
 
 You can also specify a session name by defining a file local variable =python-vterm-session= (or =python-session= if no other packages pre-define it). If the variable is defined, =C-c C-z= will open a REPL with that session name.
 
+The package also contains a clone of [[https://docs.spyder-ide.org/3/editor.html#defining-code-cells][spyder]]'s code cells. Consider the following.
+#+begin_src python
+  print("block 1")
+
+  # %% <optional title>
+  print("block 2")
+
+  # %% <optional title>
+  print("block 3")
+#+end_src
+Moving the point between any two cell markers (or between the buffer
+beginning/end and a marker) and executing
+~python-vterm-send-current-cell~ (=C-c C-j=) will send the contents of the
+block to the REPL.
+
 ** Key bindings
 
 *** python-vterm-mode
@@ -57,6 +72,14 @@ C-c C-c     python-vterm-send-region-or-current-line
 
 C-c C-b     python-vterm-send-buffer
             Send the whole content of the script buffer to the Python REPL line by line.
+
+C-c C-j     python-vterm-send-current-cell
+            Send the current code "cell" to the Python REPL.
+            Each block is delimited by `# %% <optional name>`.
+
+            If no marker is present before the point, the cell is assumed to
+            begin with the buffer. Likewise, if there is no marker after the
+            point, the cell is assumed to end with the buffer.
 
 C-c C-r     python-vterm-send-run-buffer-file
             Send a line to evaluate the buffer's file using ipython %run magic.

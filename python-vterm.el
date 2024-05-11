@@ -321,6 +321,22 @@ the main REPL, is used."
         (deactivate-mark))
     (python-vterm-send-current-line)))
 
+(defun python-vterm-send-current-cell ()
+  "Send the current code \"cell\" to the Python REPL.
+Each block is delimited by `# %% <optional name>`.
+
+If no marker is present before the point, the cell is assumed to
+begin with the buffer. Likewise, if there is no marker after the
+point, the cell is assumed to end with the buffer."
+  (interactive)
+  (save-excursion
+    (end-of-line)
+    (let ((start (or (save-excursion (re-search-backward "^# %%[ \t]*\\(.*\\)?" (point-min) t))
+                     (point-min)))
+          (end (or (save-excursion (re-search-forward "^# %%[ \t]*\\(.*\\)?" (point-max) t))
+                   (point-max))))
+      (python-vterm-paste-string (buffer-substring-no-properties start end)))))
+
 (defun python-vterm-send-buffer ()
   "Send the whole content of the script buffer to the Python REPL line by line."
   (interactive)
@@ -359,6 +375,7 @@ This is equivalent to running `%run <buffer-file-name>` in the python vterm buff
   :keymap
   `((,(kbd "C-c C-z") . python-vterm-switch-to-repl-buffer)
     (,(kbd "C-c C-c") . python-vterm-send-region-or-current-line)
+    (,(kbd "C-c C-j") . python-vterm-send-current-cell)
     (,(kbd "C-c C-b") . python-vterm-send-buffer)
     (,(kbd "C-c C-r") . python-vterm-send-run-buffer-file)
     (,(kbd "C-c C-d") . python-vterm-send-cd-to-buffer-directory)))

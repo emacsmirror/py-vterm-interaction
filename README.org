@@ -53,7 +53,9 @@ The package also contains a clone of [[https://docs.spyder-ide.org/3/editor.html
 Moving the point between any two cell markers (or between the buffer
 beginning/end and a marker) and executing
 ~python-vterm-send-current-cell~ (=C-c C-j=) will send the contents of the
-block to the REPL.
+block to the REPL. When setting ~python-vterm-silent-cells~ to ~t~, the
+cell content is written to a temporary file which is then executed in
+the REPL with the ~%run~ magic command.
 
 ** Key bindings
 

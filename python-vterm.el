@@ -73,6 +73,9 @@ Maybe either a command in the path, like python
 or an absolute path name, like /usr/local/bin/python
 parameters may be used, like python -q")
 
+(defvar-local python-vterm-silent-cells nil
+  "If non-nil, the PYTHON-VTERM-SEND-CURRENT-CELL will use ipythons `%run` magic to run a code cell.")
+
 (defvar-local python-vterm-repl-script-buffer nil)
 
 (defvar python-vterm-repl-mode-map
@@ -329,13 +332,27 @@ If no marker is present before the point, the cell is assumed to
 begin with the buffer. Likewise, if there is no marker after the
 point, the cell is assumed to end with the buffer."
   (interactive)
-  (save-excursion
-    (end-of-line)
-    (let ((start (or (save-excursion (re-search-backward "^# %%[ \t]*\\(.*\\)?" (point-min) t))
-                     (point-min)))
-          (end (or (save-excursion (re-search-forward "^# %%[ \t]*\\(.*\\)?" (point-max) t))
-                   (point-max))))
-      (python-vterm-paste-string (buffer-substring-no-properties start end)))))
+  (let ((cell-regex "^# %%[ \t]*\\(.*\\)?"))
+    (save-excursion
+      (end-of-line)
+      (let* ((start (or (save-excursion (re-search-backward cell-regex (point-min) t))
+                        (point-min)))
+             (cell-name (match-string 1))
+             (end (or (save-excursion (re-search-forward cell-regex (point-max) t))
+                      (point-max)))
+             (cell-content (buffer-substring-no-properties start end)))
+        (if python-vterm-silent-cells
+            (let ((tmpfile (make-temp-file "python-vterm" nil ".py")))
+              (with-temp-file tmpfile
+                (insert cell-content))
+              (python-vterm-paste-string (format "%%run %s # %s" tmpfile cell-name))
+              (run-with-timer 1 nil
+                              (lambda (tmpfile)
+                                (delete-file tmpfile))
+                              tmpfile))
+          (python-vterm-paste-string cell-content))
+        (when (not python-vterm-paste-with-return)
+          (python-vterm-send-return-key))))))
 
 (defun python-vterm-send-buffer ()
   "Send the whole content of the script buffer to the Python REPL line by line."

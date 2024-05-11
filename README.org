@@ -26,7 +26,7 @@ Currently you can only install the package from github. With
 
 For manual installation, download =python-vterm.el= into somewhere in your local directory and use =package-install-file= command. Please make sure [[https://github.com/PythonEditorSupport/python-emacs][python-mode]] and [[https://github.com/akermu/emacs-libvterm][emacs-libvterm]] are installed and configured correctly.
 
-Turn on =python-vterm-mode= in a =python-mode= buffer to use this package. A symbol “⁂” in the mode line indicates that the python-mode buffer is ready to interact with the python-vterm REPL. Add the following line to your init file to enable =python-vterm-mode= in =python-mode= buffers automatically.
+Turn on =python-vterm-mode= in a =python-mode= buffer to use this package. A symbol “PY” in the mode line indicates that the python-mode buffer is ready to interact with the python-vterm REPL. Add the following line to your init file to enable =python-vterm-mode= in =python-mode= buffers automatically.
 
 #+BEGIN_SRC emacs-lisp
 (add-hook 'python-mode-hook #'python-vterm-mode)

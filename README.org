@@ -1,7 +1,7 @@
 # -*- eval: (visual-line-mode 1) -*-
 #+STARTUP: showall
 
-*This* is a straight port of [[https://github.com/shg/julia-vterm.el][julia-vterm.el]]. I only modified the code slightly to deal correctly with python environments
+*This is a straight port of [[https://github.com/shg/julia-vterm.el][julia-vterm.el]].* I only modified the code slightly to deal correctly with python environments
 and play nicely with =ipython=.
 
 * python-vterm

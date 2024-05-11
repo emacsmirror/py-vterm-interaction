@@ -345,7 +345,7 @@ point, the cell is assumed to end with the buffer."
             (let ((tmpfile (make-temp-file "python-vterm" nil ".py")))
               (with-temp-file tmpfile
                 (insert cell-content))
-              (python-vterm-paste-string (format "%%run %s # %s" tmpfile cell-name))
+              (python-vterm-paste-string (format "%%run -i %s # %s" tmpfile cell-name))
               (run-with-timer 1 nil
                               (lambda (tmpfile)
                                 (delete-file tmpfile))

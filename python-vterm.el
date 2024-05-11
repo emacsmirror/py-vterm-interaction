@@ -339,7 +339,7 @@ This is equivalent to running `%run <buffer-file-name>` in the python vterm buff
   (interactive)
   (if buffer-file-name
       (let ((buffer-directory (file-name-directory buffer-file-name)))
-        (python-vterm-paste-string (format "%%cd \"%s\"\n" buffer-directory))
+        (python-vterm-paste-string (format "import os; os.chdir(\"%s\")" buffer-directory))
         (with-current-buffer (python-vterm-fellow-repl-buffer)
           (setq default-directory buffer-directory)))
     (message "The buffer is not associated with a directory.")))

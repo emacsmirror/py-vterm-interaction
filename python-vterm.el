@@ -3,7 +3,7 @@
 ;; Copyright (C) 2020-2023 Shigeaki Nishina
 
 ;; Author: Shigeaki Nishina, Valentin Boettcher
-;; Maintainer: Valentin Boettcher
+;; Maintainer: Valentin Boettcher <hiro at protagon.space>
 ;; Created: May 11, 2024
 ;; URL: https://github.com/vale981/python-vterm.el
 ;; Package-Requires: ((emacs "25.1") (vterm "0.0.1"))

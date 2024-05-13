@@ -341,7 +341,9 @@ point, the cell is assumed to end with the buffer."
       (end-of-line)
       (let* ((start (or (save-excursion (re-search-backward cell-regex (point-min) t))
                         (point-min)))
-             (cell-name (match-string 1))
+             (cell-name (if (= start (point-min))
+                            "(header)"
+                          (match-string 1)))
              (end (or (save-excursion (re-search-forward cell-regex (point-max) t))
                       (point-max)))
              (cell-content (buffer-substring-no-properties start end)))

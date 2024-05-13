@@ -284,6 +284,11 @@ With prefix ARG, prompt for session name."
   (with-current-buffer (python-vterm-fellow-repl-buffer)
     (vterm-send-return)))
 
+(defun python-vterm-send-backspace ()
+  "Send a backspace key to the Python REPL."
+  (with-current-buffer (python-vterm-fellow-repl-buffer)
+    (vterm-send-backspace)))
+
 (defun python-vterm-send-current-line ()
   "Send the current line to the Python REPL, and move to the next line.
 This sends a newline after the content of the current line even if there's no
@@ -328,6 +333,19 @@ the main REPL, is used."
         (deactivate-mark))
     (python-vterm-send-current-line)))
 
+(defun python-vterm--send-maybe-silent (string &optional comment)
+  "Send STRING to the Python REPL buffer, possibly using `%run -i' with a temp file."
+  (if python-vterm-silent-cells
+      (let ((tmpfile (make-temp-file "python-vterm" nil ".py")))
+        (with-temp-file tmpfile
+          (insert string))
+        (python-vterm-paste-string (format "%%run -i %s # %s" tmpfile (or comment "")))
+        (run-with-timer 1 nil
+                        (lambda (tmpfile)
+                          (delete-file tmpfile))
+                        tmpfile))
+    (python-vterm-paste-string string)))
+
 (defun python-vterm-send-current-cell ()
   "Send the current code \"cell\" to the Python REPL.
 Each block is delimited by `# %% <optional name>`.
@@ -347,18 +365,32 @@ point, the cell is assumed to end with the buffer."
              (end (or (save-excursion (re-search-forward cell-regex (point-max) t))
                       (point-max)))
              (cell-content (buffer-substring-no-properties start end)))
-        (if python-vterm-silent-cells
-            (let ((tmpfile (make-temp-file "python-vterm" nil ".py")))
-              (with-temp-file tmpfile
-                (insert cell-content))
-              (python-vterm-paste-string (format "%%run -i %s # %s" tmpfile (or cell-name "")))
-              (run-with-timer 1 nil
-                              (lambda (tmpfile)
-                                (delete-file tmpfile))
-                              tmpfile))
-          (python-vterm-paste-string cell-content))
+        (python-vterm--send-maybe-silent cell-content cell-name)
         (when (not python-vterm-paste-with-return)
           (python-vterm-send-return-key))))))
+
+(defun python-vterm-run-current-function ()
+  "Send the current function the Python REPL and paste its name, ready to run.
+If the function has no arguments, the function call is run immediately."
+  (interactive)
+  (let* ((function-name-regex "def[ \t]+\\([a-zA-Z_][a-zA-Z0-9_]*\\)[ \t]*(\\(.*\\)):"))
+    (save-mark-and-excursion
+      (python-mark-defun)
+      (let ((name-found (save-mark-and-excursion (re-search-forward function-name-regex (mark) t))))
+        (if name-found
+            (let ((name (match-string 1))
+                  (args (match-string 2))
+                  (python-vterm-paste-with-return nil))
+              (let ((func (buffer-substring-no-properties (region-beginning) (region-end))))
+                (python-vterm--send-maybe-silent func name)
+                (python-vterm-send-return-key))
+
+              (if (string-empty-p args)
+                  (progn
+                    (python-vterm-paste-string (format "%s()" name))
+                    (python-vterm-send-return-key))
+                (python-vterm-paste-string (format "%s(" name))))
+          (message "No function found"))))))
 
 (defun python-vterm-send-buffer ()
   "Send the whole content of the script buffer to the Python REPL line by line."
@@ -369,7 +401,7 @@ point, the cell is assumed to end with the buffer."
 (defun python-vterm-send-run-buffer-file ()
   "Run the current buffer file in the python vterm buffer.
 
-This is equivalent to running `%run <buffer-file-name>` in the python vterm buffer."
+  This is equivalent to running `%run <buffer-file-name>` in the python vterm buffer."
   (interactive)
   (python-vterm-paste-string (concat "%run " (buffer-file-name))))
 
@@ -399,6 +431,7 @@ This is equivalent to running `%run <buffer-file-name>` in the python vterm buff
   `((,(kbd "C-c C-z") . python-vterm-switch-to-repl-buffer)
     (,(kbd "C-c C-c") . python-vterm-send-region-or-current-line)
     (,(kbd "C-c C-j") . python-vterm-send-current-cell)
+    (,(kbd "C-c C-f") . python-vterm-run-current-function)
     (,(kbd "C-c C-b") . python-vterm-send-buffer)
     (,(kbd "C-c C-r") . python-vterm-send-run-buffer-file)
     (,(kbd "C-c C-d") . python-vterm-send-cd-to-buffer-directory)))

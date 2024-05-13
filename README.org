@@ -4,6 +4,8 @@
 *This is a straight port of [[https://github.com/shg/julia-vterm.el][julia-vterm.el]].* I only modified the code slightly to deal correctly with python environments
 and play nicely with =ipython=.
 
+See also [[https://github.com/shg/python-vterm.el][the original author's efforts]].
+
 * python-vterm
 
 Python-vterm provides a major-mode for an inferior Python process (or REPL) that runs in vterm, and a minor-mode that extends python-mode with the ability to interact with the inferior Python process. This is particularly useful for *fancy repls like =ipython= or =ptpython=*.

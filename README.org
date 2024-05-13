@@ -35,8 +35,15 @@ Turn on =python-vterm-mode= in a =python-mode= buffer to use this package. A sym
 By default, the command named =python= in your =PATH= is used. You can use a Python executable in any path by setting the =python-vterm-repl-program= variable to its absolute path. The variable can contain switches for the =python= command. For example, you can use a =python= executable at a certain path, with 4 threads enabled, by the line like the following.
 
 #+BEGIN_SRC emacs-lisp
-(setq python-vterm-repl-program "ipython -i")
+(setq-default python-vterm-repl-program "ipython -i")
 #+END_SRC
+
+Some commands (see below) can either paste code into the REPL verbatim
+or include it using ~%run -i~. If ~python-vterm-silent-cells~ is set to ~t~
+#+begin_src emacs-lisp
+    (setq-default python-vterm-silent-cells t)
+#+end_src
+the latter option will be used.
 
 ** How to use
 
@@ -48,7 +55,7 @@ Both of the above operations open a REPL with the default session name =main=. Y
 
 You can also specify a session name by defining a file local variable =python-vterm-session= (or =python-session= if no other packages pre-define it). If the variable is defined, =C-c C-z= will open a REPL with that session name.
 
-The package also contains a clone of [[https://docs.spyder-ide.org/3/editor.html#defining-code-cells][spyder]]'s code cells. Consider the following.
+The package also contains a clone of [[https://docs.spyder-ide.org/3/editor.html#defining-code-cells][spyder]]'s code cells. Consider the following:
 #+begin_src python
   print("block 1")
 
@@ -64,6 +71,27 @@ beginning/end and a marker) and executing
 block to the REPL. When setting ~python-vterm-silent-cells~ to ~t~, the
 cell content is written to a temporary file which is then executed in
 the REPL with the ~%run~ magic command.
+
+Similarly, one can load the current function into the REPL and
+automatically call it if it has no arguments. Consider the following:
+#+begin_src python
+  #... some code
+
+  def run_some_test():
+      # some computation
+      print("hi")
+#+end_src
+Moving the point inside of ~run_some_test~ and executing
+~python-vterm-run-current-function~ (=C-c C-f=) will load the function
+into the REPL and execute it. For a function with arguments like
+#+begin_src python
+  #... some code
+
+  def run_some_test(arg):
+      # some computation
+      print("hi")
+#+end_src
+the function name and an opening parenthesis will be pasted into the reply.
 
 ** Key bindings
 
@@ -90,6 +118,10 @@ C-c C-j     python-vterm-send-current-cell
             If no marker is present before the point, the cell is assumed to
             begin with the buffer. Likewise, if there is no marker after the
             point, the cell is assumed to end with the buffer.
+
+C-c C-f     python-vterm-run-current-function
+            Send the current function the Python REPL and paste its name, ready to run.
+            If the function has no arguments, the function call is run immediately.
 
 C-c C-r     python-vterm-send-run-buffer-file
             Send a line to evaluate the buffer's file using ipython %run magic.
@@ -129,3 +161,11 @@ C-c C-t     python-vterm-repl-copy-mode
 C-c C-r     vterm-reset-cursor-point
             Call the vterm command that moves point to where it should be.
 #+end_example
+
+* Roadmap
+** TODO fix the automatic return
+- most commands should accept a prefix that control whether the code
+  is exectued with =<enter>= or just pasted into the repl
+** TODO detect interpreter
+- this allows to avoid using ipython features in ptpython/python
+** TODO make an =in-repl-buffer= macro

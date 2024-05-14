@@ -145,6 +145,11 @@ M-k         python-vterm-repl-clear-buffer
 
 C-c C-t     python-vterm-repl-copy-mode
             Enter copy mode.
+
+C-c M-r     python-vterm-repl-restart
+            Restart the current inferior Python process. A new Python REPL will be opened in
+            the same Emacs window, and the working directory and environment will be
+            restored from the previous REPL process when possible.
 #+end_example
 
 *** python-vterm-repl-mode (copy mode)

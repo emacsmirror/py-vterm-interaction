@@ -7,7 +7,7 @@
 ;; Created: May 11, 2024
 ;; URL: https://github.com/vale981/python-vterm.el
 ;; Package-Requires: ((emacs "25.1") (vterm "0.0.1"))
-;; Version: 1.0.1
+;; Version: 1.0.2
 ;; Keywords: languages, python
 
 ;; This file is not part of GNU Emacs.
@@ -84,6 +84,7 @@ parameters may be used, like python -q")
     (define-key map (kbd "M-k") #'python-vterm-repl-clear-buffer)
     (define-key map (kbd "C-c C-t") #'python-vterm-repl-copy-mode)
     (define-key map (kbd "C-l") #'recenter-top-bottom)
+    (define-key map (kbd "C-c M-r") #'python-vterm-repl-restart)
     map))
 
 (define-derived-mode python-vterm-repl-mode vterm-mode "Inf-Python"
@@ -103,9 +104,25 @@ If SESSION-NAME is not given, the default session name `main' is assumed."
 (defun python-vterm-repl-session-name (repl-buffer)
   "Return the session name of REPL-BUFFER."
   (let ((bn (buffer-name repl-buffer)))
-    (if (string= (substring bn 1 7) "python:")
-        (substring bn 7 -1)
+    (if (string= (substring bn 1 8) "python:")
+        (substring bn 8 -1)
       nil)))
+
+
+(defun python-vterm--launch (ses-name env context)
+  (let ((new-buffer
+         (generate-new-buffer (python-vterm-repl-buffer-name ses-name)))
+        (vterm-shell python-vterm-repl-program)
+        (vterm-environment (if context (plist-get context :env) env)))
+    (with-current-buffer new-buffer
+      (when context
+        (setq default-directory (plist-get context :cwd))
+        (setq python-vterm-repl-script-buffer (plist-get context :script-buffer)))
+      (python-vterm-repl-mode)
+      (run-hooks python-vterm-repl-mode-hook)
+      (add-function :filter-args (process-filter vterm--process)
+                    (python-vterm-repl-run-filter-functions-func ses-name)))
+    new-buffer))
 
 (defun python-vterm-repl-buffer (&optional session-name restart)
   "Return an inferior Python REPL buffer of the session name SESSION-NAME.
@@ -118,18 +135,20 @@ recreated."
              (alive (vterm-check-proc buffer))
              (no-restart (not restart)))
         buffer
-      (if (get-buffer-process buffer) (delete-process buffer))
-      (if buffer (kill-buffer buffer))
-      (let ((buffer (generate-new-buffer (python-vterm-repl-buffer-name ses-name))))
-        (with-current-buffer buffer
-          (let ((vterm-environment env)
-                (vterm-shell python-vterm-repl-program))
-            (python-vterm-repl-mode)
-            (run-hooks python-vterm-repl-mode-hook)
-            (add-function :filter-args (process-filter vterm--process)
-                          (python-vterm-repl-run-filter-functions-func ses-name))))
-        buffer))))
-
+      (if (not buffer)
+          (python-vterm--launch ses-name env nil)
+        (save-excursion
+          (let* ((win (get-buffer-window buffer))
+                 (proc (get-buffer-process buffer))
+                 (context (if proc (python-vterm-repl-get-context buffer))))
+            (with-current-buffer buffer
+              (rename-buffer (concat (buffer-name) ":orphaned")))
+            (let ((new-buffer (python-vterm--launch ses-name env context)))
+              (when win
+                (select-window win)
+                (switch-to-buffer new-buffer))
+              (if (process-live-p proc) (delete-process proc))
+              new-buffer)))))))
 
 (defun python-vterm-repl-list-sessions ()
   "Return a list of existing Python REPL sessions."
@@ -168,6 +187,12 @@ If there's already an alive REPL buffer for the session, it will be opened."
           (setq python-vterm-fellow-repl-buffer repl-buffer)
           (switch-to-buffer-other-window script-buffer)))))
 
+(defun python-vterm-repl-restart ()
+  "Restart the inferior Python process in the current REPL buffer."
+  (interactive)
+  (if (y-or-n-p "Restart Python REPL? ")
+      (python-vterm-repl-buffer (python-vterm-repl-session-name (current-buffer)) t)))
+
 (defun python-vterm-repl-clear-buffer ()
   "Clear the content of the Python REPL buffer."
   (interactive)
@@ -189,7 +214,7 @@ If there's already an alive REPL buffer for the session, it will be opened."
             (setq str (apply (pop funcs) (list str))))
           (list proc str))))))
 
-(defun python-vterm-repl-buffer-status ()
+(defun python-vterm-repl-prompt-status ()
   "Check and return the prompt status of the REPL.
 Return a corresponding symbol or nil if not ready for input."
   (let* ((bs (buffer-string))
@@ -205,6 +230,53 @@ Return a corresponding symbol or nil if not ready for input."
       (pcase prompt
         ((rx bol ">>> " eol) :python)
         ((rx bol "In [" (one-or-more (any "0-9")) "]: " eol) :ipython)))))
+
+
+(defun python-vterm--get-script-file (name)
+  "Return the full path of the script file with NAME."
+  (expand-file-name (concat "./scripts/" name)
+                    (file-name-directory (symbol-file 'python-vterm-mode))))
+
+(defun python-vterm--execute-script (name)
+  "Execute the python script file with NAME."
+  (let ((script-file (python-vterm--get-script-file name)))
+    (python-vterm-paste-string (format "exec(open(\"%s\").read())" script-file))
+    (if (not python-vterm-paste-with-return) (vterm-send-return))))
+
+(defun python-vterm--read-script (name)
+  "Read the content of the script file with NAME.
+The path of the script is expanded relative to the `scripts' directory."
+  (let ((script-file (python-vterm--get-script-file name)))
+    (with-temp-buffer
+      (insert-file-contents script-file)
+      (buffer-string))))
+
+(defun python-vterm-repl-get-context (buf)
+  "Obtain context information of the REPL buffer BUF.
+This returns a list of the current working directory of teh
+inferior Python process and the current active environment."
+  (with-current-buffer buf
+    (let ((tmpfile (make-temp-file "python-vterm-context-" nil ".json")))
+      (let ((uid (concat "python-vterm:" (org-id-uuid))))
+        (python-vterm--execute-script "get_env.py")
+        (python-vterm-paste-string (concat "python_vterm__get_context(\""  tmpfile "\")\n"))
+        (if (not python-vterm-paste-with-return) (vterm-send-return))
+        (let ((context-json ""))
+          (while
+              (progn (setq context-json
+                           (with-temp-buffer
+                             (insert-file-contents tmpfile)
+                             (buffer-string)))
+                     (if (string= context-json "")
+                         (progn (sleep-for 0.1)
+                                t)
+                       nil)))
+          (delete-file tmpfile)
+          (let ((context
+                 (json-parse-string (string-replace "\n" "" context-json)
+                                    :object-type 'plist
+                                    :array-type 'list)))
+            (plist-put context :script-buffer python-vterm-repl-script-buffer)))))))
 
 (defvar python-vterm-repl-copy-mode-map
   (let ((map (make-sparse-keymap)))
@@ -253,6 +325,7 @@ Return a corresponding symbol or nil if not ready for input."
 
 (defvar-local python-vterm-fellow-repl-buffer nil)
 (defvar-local python-vterm-session nil)
+(defvar-local python-vterm-context nil)
 
 (defun python-vterm-fellow-repl-buffer (&optional session-name)
   "Return the paired REPL buffer or the one specified with SESSION-NAME."
@@ -314,6 +387,7 @@ script buffer."
 If SESSION-NAME is given, the REPL with the session name, otherwise
 the main REPL, is used."
   (with-current-buffer (python-vterm-fellow-repl-buffer session-name)
+    (goto-char (point-max))
     (vterm-send-key (kbd "C-a"))
     (vterm-send-key (kbd "C-k"))
     (vterm-send-string string t)
@@ -417,10 +491,10 @@ If the function has no arguments, the function call is run immediately."
 
 (defalias 'python-vterm-sync-wd 'python-vterm-send-cd-to-buffer-directory)
 
-(defun python-vterm-fellow-repl-buffer-status ()
+(defun python-vterm-fellow-repl-prompt-status ()
   "Return REPL mode or nil if REPL is not ready for input."
   (with-current-buffer (python-vterm-fellow-repl-buffer)
-    (python-vterm-repl-buffer-status)))
+    (python-vterm-repl-prompt-status)))
 
 ;;;###autoload
 (define-minor-mode python-vterm-mode

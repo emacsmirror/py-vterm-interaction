@@ -169,3 +169,5 @@ C-c C-r     vterm-reset-cursor-point
 ** TODO detect interpreter
 - this allows to avoid using ipython features in ptpython/python
 ** TODO make an =in-repl-buffer= macro
+** TODO make run-current-function a bit more intelligent
+- detect if there are only arguments with default values

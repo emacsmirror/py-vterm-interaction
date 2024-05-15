@@ -119,7 +119,6 @@ If SESSION-NAME is not given, the default session name `main' is assumed."
         (setq default-directory (plist-get context :cwd))
         (setq python-vterm-repl-script-buffer (plist-get context :script-buffer)))
       (python-vterm-repl-mode)
-      (run-hooks python-vterm-repl-mode-hook)
       (add-function :filter-args (process-filter vterm--process)
                     (python-vterm-repl-run-filter-functions-func ses-name)))
     new-buffer))

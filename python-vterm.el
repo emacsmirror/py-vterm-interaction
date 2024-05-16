@@ -533,15 +533,18 @@ If the function has no arguments, the function call is run immediately."
 (defun python-vterm-send-buffer ()
   "Send the whole content of the script buffer to the Python REPL line by line."
   (interactive)
-  (save-excursion
-    (python-vterm-paste-string (python-vterm-ensure-newline (buffer-string)))))
+  (let ((python-vterm-paste-with-return t)
+        (python-vterm-paste-with-clear nil))
+
+    (python-vterm-paste-string (buffer-string))))
 
 (defun python-vterm-send-run-buffer-file ()
   "Run the current buffer file in the python vterm buffer.
 
   This is equivalent to running `%run -i <buffer-file-name>` in the python vterm buffer."
   (interactive)
-  (let ((file buffer-file-name))
+  (let ((file buffer-file-name)
+        (python-vterm-paste-with-return t))
     (with-current-buffer (python-vterm-fellow-repl-buffer)
       (python-vterm-paste-string (python-vterm--load-file file "load script buffer")))))
 

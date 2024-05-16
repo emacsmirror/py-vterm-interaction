@@ -107,6 +107,11 @@ If in doubt, set this to :python.")
   :type 'number
   :group 'python-vterm-repl)
 
+(defcustom python-vterm-repl-script-timeout 5
+  "Time in seconds to wait for the Python REPL to execute a script."
+  :type 'number
+  :group 'python-vterm-repl)
+
 (defun python-vterm-repl-buffer-name (&optional session-name)
   "Return a Python REPL buffer name whose session name is SESSION-NAME.
 If SESSION-NAME is not given, the default session name `main' is assumed."
@@ -267,6 +272,8 @@ Return a corresponding symbol or nil if not ready for input."
 
 (defun python-vterm--execute-script (name &rest args)
   "Load the script with file NAME and call the eponymous function with ARGS.
+Returns either the result of the function or nil if execution
+times out after `python-vterm-repl-script-timeout'.
 
 The script file is expected to be in the `scripts' directory of
 the package and must contain exactly one function with the same
@@ -300,22 +307,26 @@ will be cleaned up afterwards."
     (python-vterm-paste-string (format "del %s" name))
     (python-vterm-send-return-key)
 
-    (while
-        (progn (with-temp-buffer
-                 (insert-file-contents tmpfile)
-                 (buffer-string)
-                 (if (= (buffer-size) 0)
+    (with-timeout (python-vterm-repl-script-timeout
+                   (progn (display-warning 'python-vterm "Python script did not finish in time.")
+                          (delete-file tmpfile)
+                          nil))
+      (while
+          (progn (with-temp-buffer
+                   (insert-file-contents tmpfile)
+                   (buffer-string)
+                   (if (= (buffer-size) 0)
+                       (progn
+                         (sleep-for 0.1)
+                         t)
                      (progn
-                       (sleep-for 0.1)
-                       t)
-                   (progn
-                     (delete-file tmpfile)
-                     (setq result (json-parse-buffer :object-type 'plist :array-type 'list))
-                     nil)))))
-    (let ((inhibit-read-only t))
-      (python-vterm-repl-clear-buffer)
-      (insert up-to-now))
-    result))
+                       (delete-file tmpfile)
+                       (setq result (json-parse-buffer :object-type 'plist :array-type 'list))
+                       nil)))))
+      (let ((inhibit-read-only t))
+        (python-vterm-repl-clear-buffer)
+        (insert up-to-now))
+      result)))
 
 
 (defun python-vterm--read-script (name)

@@ -7,7 +7,7 @@
 ;; Created: May 11, 2024
 ;; URL: https://github.com/vale981/python-vterm.el
 ;; Package-Requires: ((emacs "25.1") (vterm "0.0.1"))
-;; Version: 1.0.2
+;; Version: 1.0.3
 ;; Keywords: languages, python
 
 ;; This file is not part of GNU Emacs.
@@ -74,7 +74,9 @@ or an absolute path name, like /usr/local/bin/python
 parameters may be used, like python -q")
 
 (defvar-local python-vterm-silent-cells nil
-  "If non-nil, the PYTHON-VTERM-SEND-CURRENT-CELL will use ipythons `%run` magic to run a code cell.")
+  "If non-nil, the PYTHON-VTERM-SEND-CURRENT-CELL will use ipythons `%run` magic to run a code cell.
+
+For plain python `exec(open(...).read())` is used.")
 
 (defvar-local python-vterm-repl-script-buffer nil)
 (defvar-local python-vterm-repl-interpreter :python
@@ -132,8 +134,8 @@ If CONTEXT is given, it is used to set the working directory and the script buff
                           (while (not (python-vterm-repl-prompt-status))
                             (sit-for 0.1))
                           (setq python-vterm-repl-interpreter
-                                (if (python-vterm--execute-script "is_ipython")
-                                    :ipython :python))))
+                                (if (eq (python-vterm--execute-script "is_ipython") :false)
+                                    :python :ipython))))
                       new-buffer)
 
       (add-function :filter-args (process-filter vterm--process)
@@ -461,18 +463,26 @@ the main REPL, is used."
         (deactivate-mark))
     (python-vterm-send-current-line)))
 
+(defun python-vterm--load-file (file &optional comment)
+  "Load the content of the file with FILE into the Python REPL buffer."
+  (if (eq python-vterm-repl-interpreter :ipython)
+      (format "%%run -i %s # %s" file (or comment ""))
+    (format "exec(open(\"%s\").read()) # %s" file comment)))
+
 (defun python-vterm--send-maybe-silent (string &optional comment)
   "Send STRING to the Python REPL buffer, possibly using `%run -i' with a temp file."
-  (if python-vterm-silent-cells
-      (let ((tmpfile (make-temp-file "python-vterm" nil ".py")))
-        (with-temp-file tmpfile
-          (insert string))
-        (python-vterm-paste-string (format "%%run -i %s # %s" tmpfile (or comment "")))
-        (run-with-timer 1 nil
-                        (lambda (tmpfile)
-                          (delete-file tmpfile))
-                        tmpfile))
-    (python-vterm-paste-string string)))
+
+  (with-current-buffer (python-vterm-fellow-repl-buffer)
+    (if python-vterm-silent-cells
+        (let ((tmpfile (make-temp-file "python-vterm" nil ".py")))
+          (with-temp-file tmpfile
+            (insert string))
+          (python-vterm-paste-string (python-vterm--load-file tmpfile comment))
+          (run-with-timer 10 nil
+                          (lambda (tmpfile)
+                            (delete-file tmpfile))
+                          tmpfile))
+      (python-vterm-paste-string string))))
 
 (defun python-vterm-send-current-cell ()
   "Send the current code \"cell\" to the Python REPL.
@@ -529,17 +539,19 @@ If the function has no arguments, the function call is run immediately."
 (defun python-vterm-send-run-buffer-file ()
   "Run the current buffer file in the python vterm buffer.
 
-  This is equivalent to running `%run <buffer-file-name>` in the python vterm buffer."
+  This is equivalent to running `%run -i <buffer-file-name>` in the python vterm buffer."
   (interactive)
-  (python-vterm-paste-string (concat "%run " (buffer-file-name))))
+  (python-vterm-paste-string (python-vterm--load-file buffer-file-name "load script buffer")))
 
 (defun python-vterm-send-cd-to-buffer-directory ()
   "Change the REPL's working directory to the directory of the buffer file."
   (interactive)
   (if buffer-file-name
       (let ((buffer-directory (file-name-directory buffer-file-name)))
-        (python-vterm-paste-string (format "import os; os.chdir(\"%s\")" buffer-directory))
         (with-current-buffer (python-vterm-fellow-repl-buffer)
+          (python-vterm-paste-string (if (eq python-vterm-repl-interpreter :ipython)
+                                         (format "%%cd %s" buffer-directory)
+                                       (format "import os; os.chdir(\"%s\")" buffer-directory)))
           (setq default-directory buffer-directory)))
     (message "The buffer is not associated with a directory.")))
 

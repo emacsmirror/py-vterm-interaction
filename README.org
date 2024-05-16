@@ -12,6 +12,9 @@ Python-vterm provides a major-mode for an inferior Python process (or REPL) that
 
 The functionalities required for typical REPL interaction have been implemented. While I would like to keep this package simple, suggestions are always welcome.
 
+It is automatically detected whether the repl runs =ipython= or another
+interpreter and some functions use different functionalities based on
+that information.
 ** Installation
 Currently you can only install the package from github. With
 ~use-package~ and ~straight~ it looks as follows:
@@ -125,7 +128,6 @@ C-c C-f     python-vterm-run-current-function
 
 C-c C-r     python-vterm-send-run-buffer-file
             Send a line to evaluate the buffer's file using ipython %run magic.
-            This is only useful when using ipython.
 
 C-c C-d     python-vterm-send-cd-to-buffer-directory
             Send %cd function call to the Python REPL to change the current working
@@ -171,8 +173,7 @@ C-c C-r     vterm-reset-cursor-point
 ** TODO fix the automatic return
 - most commands should accept a prefix that control whether the code
   is exectued with =<enter>= or just pasted into the repl
-** TODO detect interpreter
-- this allows to avoid using ipython features in ptpython/python
+** TODO overhaul session management
 ** TODO make an =in-repl-buffer= macro
 ** TODO make run-current-function a bit more intelligent
 - detect if there are only arguments with default values

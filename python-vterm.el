@@ -7,7 +7,7 @@
 ;; Created: May 11, 2024
 ;; URL: https://github.com/vale981/python-vterm.el
 ;; Package-Requires: ((emacs "25.1") (vterm "0.0.1"))
-;; Version: 1.0.4
+;; Version: 1.0.5
 ;; Keywords: languages, python
 
 ;; This file is not part of GNU Emacs.
@@ -102,6 +102,11 @@ If in doubt, set this to :python.")
   :type 'hook
   :group 'python-vterm-repl)
 
+(defcustom python-vterm-repl-launch-timeout 5
+  "Time in seconds to wait for the Python REPL to start."
+  :type 'number
+  :group 'python-vterm-repl)
+
 (defun python-vterm-repl-buffer-name (&optional session-name)
   "Return a Python REPL buffer name whose session name is SESSION-NAME.
 If SESSION-NAME is not given, the default session name `main' is assumed."
@@ -131,11 +136,16 @@ If CONTEXT is given, it is used to set the working directory and the script buff
       (run-with-timer .5 nil
                       (lambda (buffer)
                         (with-current-buffer buffer
-                          (while (not (python-vterm-repl-prompt-status))
-                            (sit-for 0.1))
-                          (setq python-vterm-repl-interpreter
-                                (if (eq (python-vterm--execute-script "is_ipython") :false)
-                                    :python :ipython))))
+                          (with-timeout (python-vterm-repl-launch-timeout
+                                         (progn (display-warning 'python-vterm "Python REPL did not start in time.")
+                                                (kill-buffer buffer)))
+                            (while (not (python-vterm-repl-prompt-status))
+                              (message "waiting for prompt...")
+                              (sit-for 0.2)
+                              t)
+                            (setq python-vterm-repl-interpreter
+                                  (if (eq (python-vterm--execute-script "is_ipython") :false)
+                                      :python :ipython)))))
                       new-buffer)
 
       (add-function :filter-args (process-filter vterm--process)

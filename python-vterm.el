@@ -128,7 +128,10 @@ If SESSION-NAME is not given, the default session name `main' is assumed."
 (defun python-vterm--launch (ses-name env context)
   "Launch a new Python REPL buffer with SES-NAME and ENV.
 
-If CONTEXT is given, it is used to set the working directory and the script buffer."
+If CONTEXT is given, it is used to set the working directory and
+the script buffer.  It is also attempted to detect whether the
+python interpreter is ipython.  This times out after
+`python-vterm-repl-launch-timeout' seconds."
   (let ((new-buffer
          (generate-new-buffer (python-vterm-repl-buffer-name ses-name)))
         (vterm-shell python-vterm-repl-program)

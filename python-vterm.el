@@ -541,7 +541,9 @@ If the function has no arguments, the function call is run immediately."
 
   This is equivalent to running `%run -i <buffer-file-name>` in the python vterm buffer."
   (interactive)
-  (python-vterm-paste-string (python-vterm--load-file buffer-file-name "load script buffer")))
+  (let ((file buffer-file-name))
+    (with-current-buffer (python-vterm-fellow-repl-buffer)
+      (python-vterm-paste-string (python-vterm--load-file file "load script buffer")))))
 
 (defun python-vterm-send-cd-to-buffer-directory ()
   "Change the REPL's working directory to the directory of the buffer file."

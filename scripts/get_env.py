@@ -1,12 +1,10 @@
-def python_vterm__get_context(tempfile):
-    import json
+def get_env(tempfile):
     import os
 
-    with open(tempfile, "w") as f:
-        context = dict(
+    dump_json(
+        tempfile,
+        dict(
             env=["=".join(el) for el in list(os.environ.items())],
             cwd=os.getcwd(),
-        )
-        json.dump(context, f)
-
-    del os, json
+        ),
+    )

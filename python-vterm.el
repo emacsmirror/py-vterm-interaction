@@ -77,6 +77,10 @@ parameters may be used, like python -q")
   "If non-nil, the PYTHON-VTERM-SEND-CURRENT-CELL will use ipythons `%run` magic to run a code cell.")
 
 (defvar-local python-vterm-repl-script-buffer nil)
+(defvar-local python-vterm-repl-interpreter :python
+  "Reflects whether the inferior Python REPL is a Python or IPython shell.
+
+If in doubt, set this to :python.")
 
 (defvar python-vterm-repl-mode-map
   (let ((map (make-sparse-keymap)))
@@ -110,6 +114,9 @@ If SESSION-NAME is not given, the default session name `main' is assumed."
 
 
 (defun python-vterm--launch (ses-name env context)
+  "Launch a new Python REPL buffer with SES-NAME and ENV.
+
+If CONTEXT is given, it is used to set the working directory and the script buffer."
   (let ((new-buffer
          (generate-new-buffer (python-vterm-repl-buffer-name ses-name)))
         (vterm-shell python-vterm-repl-program)
@@ -119,6 +126,16 @@ If SESSION-NAME is not given, the default session name `main' is assumed."
         (setq default-directory (plist-get context :cwd))
         (setq python-vterm-repl-script-buffer (plist-get context :script-buffer)))
       (python-vterm-repl-mode)
+      (run-with-timer .5 nil
+                      (lambda (buffer)
+                        (with-current-buffer buffer
+                          (while (not (python-vterm-repl-prompt-status))
+                            (sit-for 0.1))
+                          (setq python-vterm-repl-interpreter
+                                (if (python-vterm--execute-script "is_ipython")
+                                    :ipython :python))))
+                      new-buffer)
+
       (add-function :filter-args (process-filter vterm--process)
                     (python-vterm-repl-run-filter-functions-func ses-name)))
     new-buffer))
@@ -233,14 +250,61 @@ Return a corresponding symbol or nil if not ready for input."
 
 (defun python-vterm--get-script-file (name)
   "Return the full path of the script file with NAME."
-  (expand-file-name (concat "./scripts/" name)
+  (expand-file-name (concat "./scripts/" name ".py")
                     (file-name-directory (symbol-file 'python-vterm-mode))))
 
-(defun python-vterm--execute-script (name)
-  "Execute the python script file with NAME."
-  (let ((script-file (python-vterm--get-script-file name)))
-    (python-vterm-paste-string (format "exec(open(\"%s\").read())" script-file))
-    (if (not python-vterm-paste-with-return) (vterm-send-return))))
+(defun python-vterm--execute-script (name &rest args)
+  "Load the script with file NAME and call the eponymous function with ARGS.
+
+The script file is expected to be in the `scripts' directory of
+the package and must contain exactly one function with the same
+name as the file without the extension.  The function must return
+a JSON-serializable object.  The function is called with the
+arguments ARGS and the result is returned as a parsed JSON object
+in the plist format.  The functions from the utility script are
+loaded into the repl as well.  All loaded functions and modules
+will be cleaned up afterwards."
+  (let ((utility-file (python-vterm--get-script-file name))
+        (script-file (python-vterm--get-script-file "utility"))
+        (tmpfile (make-temp-file "python-vterm--" nil ".json"))
+        (python-vterm-paste-with-return nil)
+        (python-vterm-paste-with-clear nil)
+        (arglist (concat
+                  (seq-reduce
+                   (lambda (el rest)
+                     (format "%s, \"%s" el rest))
+                   args "")
+                  (if (seq-empty-p args) "" "\"")))
+        (up-to-now (buffer-string))
+        (result nil))
+
+    (python-vterm-clear-line)
+    (python-vterm-paste-string (format "exec(open(\"%s\").read());" utility-file))
+    (python-vterm-paste-string (format "exec(open(\"%s\").read());" script-file))
+    (python-vterm-paste-string (format "%s(\"%s\"%s);" name tmpfile arglist))
+
+    ;; clean up all utility stuff
+    (python-vterm-paste-string "del dump_json;")
+    (python-vterm-paste-string (format "del %s" name))
+    (python-vterm-send-return-key)
+
+    (while
+        (progn (with-temp-buffer
+                 (insert-file-contents tmpfile)
+                 (buffer-string)
+                 (if (= (buffer-size) 0)
+                     (progn
+                       (sleep-for 0.1)
+                       t)
+                   (progn
+                     (delete-file tmpfile)
+                     (setq result (json-parse-buffer :object-type 'plist :array-type 'list))
+                     nil)))))
+    (let ((inhibit-read-only t))
+      (python-vterm-repl-clear-buffer)
+      (insert up-to-now))
+    result))
+
 
 (defun python-vterm--read-script (name)
   "Read the content of the script file with NAME.
@@ -255,27 +319,8 @@ The path of the script is expanded relative to the `scripts' directory."
 This returns a list of the current working directory of teh
 inferior Python process and the current active environment."
   (with-current-buffer buf
-    (let ((tmpfile (make-temp-file "python-vterm-context-" nil ".json")))
-      (let ((uid (concat "python-vterm:" (org-id-uuid))))
-        (python-vterm--execute-script "get_env.py")
-        (python-vterm-paste-string (concat "python_vterm__get_context(\""  tmpfile "\")\n"))
-        (if (not python-vterm-paste-with-return) (vterm-send-return))
-        (let ((context-json ""))
-          (while
-              (progn (setq context-json
-                           (with-temp-buffer
-                             (insert-file-contents tmpfile)
-                             (buffer-string)))
-                     (if (string= context-json "")
-                         (progn (sleep-for 0.1)
-                                t)
-                       nil)))
-          (delete-file tmpfile)
-          (let ((context
-                 (json-parse-string (string-replace "\n" "" context-json)
-                                    :object-type 'plist
-                                    :array-type 'list)))
-            (plist-put context :script-buffer python-vterm-repl-script-buffer)))))))
+    (let ((context (python-vterm--execute-script "get_env")))
+      (plist-put context :script-buffer python-vterm-repl-script-buffer))))
 
 (defvar python-vterm-repl-copy-mode-map
   (let ((map (make-sparse-keymap)))
@@ -321,6 +366,9 @@ inferior Python process and the current active environment."
 
 (defvar-local python-vterm-paste-with-return t
   "Whether to send a return key after pasting a string to the Python REPL.")
+
+(defvar-local python-vterm-paste-with-clear t
+  "Whether to clear the line before pasting a string to the Python REPL.")
 
 (defvar-local python-vterm-fellow-repl-buffer nil)
 (defvar-local python-vterm-session nil)
@@ -387,11 +435,18 @@ If SESSION-NAME is given, the REPL with the session name, otherwise
 the main REPL, is used."
   (with-current-buffer (python-vterm-fellow-repl-buffer session-name)
     (goto-char (point-max))
-    (vterm-send-key (kbd "C-a"))
-    (vterm-send-key (kbd "C-k"))
+    (when python-vterm-paste-with-clear
+      (python-vterm-clear-line session-name))
     (vterm-send-string string t)
     (if python-vterm-paste-with-return
         (python-vterm-send-return-key))))
+
+(defun python-vterm-clear-line (&optional session-name)
+  "Clear the current line in the Python REPL buffer."
+  (with-current-buffer (python-vterm-fellow-repl-buffer session-name)
+    (goto-char (point-max))
+    (vterm-send-key (kbd "C-a"))
+    (vterm-send-key (kbd "C-k"))))
 
 (defun python-vterm-ensure-newline (str)
   "Add a newline at the end of STR if the last character is not a newline."

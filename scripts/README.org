@@ -1,0 +1,11 @@
+* REPL Scripts
+These are scripts intended to be run in the REPL by =python-vterm=. Each
+script (except =utility.py=) should contain only one function of the
+same name as the script file. All functions should not alter the
+global state and have no observable side effects in the REPL. They can
+only use standard python functionality.
+
+Each function must take a file path as its first argument and write
+its output as json to that path. All functions in =utility.py= are
+available to call in each script without importing them. Among the is
+~dump_json([path], [value])~.

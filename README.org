@@ -129,6 +129,9 @@ C-c C-f     python-vterm-run-current-function
 C-c C-r     python-vterm-send-run-buffer-file
             Send a line to evaluate the buffer's file using ipython %run magic.
 
+C-c C-i     Import the current buffer file like `from <module> import *' in the python repl.
+            This is especially useful with `%autoload 3' in ipython.
+
 C-c C-d     python-vterm-send-cd-to-buffer-directory
             Send %cd function call to the Python REPL to change the current working
             directory of REPL to the buffer's directory.

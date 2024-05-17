@@ -141,7 +141,7 @@ python interpreter is ipython.  This times out after
         (setq default-directory (plist-get context :cwd))
         (setq python-vterm-repl-script-buffer (plist-get context :script-buffer)))
       (python-vterm-repl-mode)
-      (run-with-timer .5 nil
+      (run-with-timer 1 nil
                       (lambda (buffer)
                         (with-current-buffer buffer
                           (with-timeout (python-vterm-repl-launch-timeout
@@ -149,7 +149,7 @@ python interpreter is ipython.  This times out after
                                                 (kill-buffer buffer)))
                             (while (not (python-vterm-repl-prompt-status))
                               (message "waiting for prompt...")
-                              (sit-for 0.2)
+                              (sit-for 0.5)
                               t)
                             (setq python-vterm-repl-interpreter
                                   (if (eq (python-vterm--execute-script "is_ipython") :false)
@@ -572,6 +572,14 @@ If the function has no arguments, the function call is run immediately."
     (with-current-buffer (python-vterm-fellow-repl-buffer)
       (python-vterm-paste-string (python-vterm--load-file file "load script buffer")))))
 
+(defun python-vterm-send-import-buffer-file ()
+  "Import the current buffer file like `from <module> import *' in the python repl."
+  (interactive)
+  (let ((file buffer-file-name)
+        (python-vterm-paste-with-return t))
+    (with-current-buffer (python-vterm-fellow-repl-buffer)
+      (python-vterm--execute-script "star_import_script" file))))
+
 (defun python-vterm-send-cd-to-buffer-directory ()
   "Change the REPL's working directory to the directory of the buffer file."
   (interactive)
@@ -601,6 +609,7 @@ If the function has no arguments, the function call is run immediately."
     (,(kbd "C-c C-c") . python-vterm-send-region-or-current-line)
     (,(kbd "C-c C-j") . python-vterm-send-current-cell)
     (,(kbd "C-c C-f") . python-vterm-run-current-function)
+    (,(kbd "C-c C-i") . python-vterm-send-import-buffer-file)
     (,(kbd "C-c C-b") . python-vterm-send-buffer)
     (,(kbd "C-c C-r") . python-vterm-send-run-buffer-file)
     (,(kbd "C-c C-d") . python-vterm-send-cd-to-buffer-directory)))

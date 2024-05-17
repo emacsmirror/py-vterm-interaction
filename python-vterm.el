@@ -542,8 +542,20 @@ If the function has no arguments, the function call is run immediately."
         (if name-found
             (let ((name (match-string 1))
                   (args (match-string 2))
-                  (python-vterm-paste-with-return nil))
-              (let ((func (buffer-substring-no-properties (region-beginning) (region-end))))
+                  (python-vterm-paste-with-return nil)
+                  (begin (region-beginning))
+                  (end (region-end)))
+
+              ;; capture decorators too
+              (save-excursion
+                (while
+                    (progn (forward-line -1)
+                           (beginning-of-line)
+                           (if (looking-at "@")
+                               (setq begin (point))
+                             nil))))
+
+              (let ((func (buffer-substring-no-properties begin end)))
                 (python-vterm--send-maybe-silent func name)
                 (python-vterm-send-return-key))
 

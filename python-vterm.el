@@ -124,6 +124,8 @@ If SESSION-NAME is not given, the default session name `main' is assumed."
         (substring bn 8 -1)
       nil)))
 
+(defvar-local python-vterm-repl--launch-timer '()
+  "A timer that is used to determine the interpreter upon launch.")
 
 (defun python-vterm--launch (ses-name env context)
   "Launch a new Python REPL buffer with SES-NAME and ENV.
@@ -141,21 +143,17 @@ python interpreter is ipython.  This times out after
         (setq default-directory (plist-get context :cwd))
         (setq python-vterm-repl-script-buffer (plist-get context :script-buffer)))
       (python-vterm-repl-mode)
-      (run-with-timer 1 nil
-                      (lambda (buffer)
-                        (with-current-buffer buffer
-                          (with-timeout (python-vterm-repl-launch-timeout
-                                         (progn (display-warning 'python-vterm "Python REPL did not start in time.")
-                                                (kill-buffer buffer)))
-                            (while (not (python-vterm-repl-prompt-status))
-                              (message "waiting for prompt...")
-                              (sit-for 0.5)
-                              t)
-                            (setq python-vterm-repl-interpreter
-                                  (if (eq (python-vterm--execute-script "is_ipython") :false)
-                                      :python :ipython)))))
-                      new-buffer)
-
+      (setq python-vterm-repl--launch-timer
+            (run-with-timer 1 1
+                            (lambda (buffer)
+                              (if (python-vterm-repl-prompt-status)
+                                  (progn
+                                    (setq python-vterm-repl-interpreter
+                                          (if (eq (python-vterm--execute-script "is_ipython") :false)
+                                              :python :ipython))
+                                    (cancel-timer python-vterm-repl--launch-timer))
+                                (message "waiting for prompt...")))
+                            new-buffer))
       (add-function :filter-args (process-filter vterm--process)
                     (python-vterm-repl-run-filter-functions-func ses-name)))
     new-buffer))

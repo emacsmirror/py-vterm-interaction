@@ -1,8 +1,13 @@
 # -*- eval: (visual-line-mode 1) -*-
 #+STARTUP: showall
 
-*This is a straight port of [[https://github.com/shg/julia-vterm.el][julia-vterm.el]].* I only modified the code slightly to deal correctly with python environments
-and play nicely with =ipython=.
+This is a port of [[https://github.com/shg/julia-vterm.el][julia-vterm.el]] with some modification to deal with
+python (virtual) environments and play nicely with =ipython= and the
+like.
+
+Some advantages over the built-in python interaction is the ability to
+run ~ipython~ with it's fancy prompt and make use of ~spyder~-like code
+cells (see below) or running the current function.
 
 See also [[https://github.com/shg/python-vterm.el][the original author's efforts]].
 

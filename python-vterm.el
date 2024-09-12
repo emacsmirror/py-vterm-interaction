@@ -127,8 +127,6 @@ If SESSION-NAME is not given, the default session name `main' is assumed."
 (defvar python-vterm-repl--launch-timers '()
   "A timer that is used to determine the interpreter upon launch.")
 
-(defvar-local python-vterm-repl--buffer-id '()
-  "An id to identify the buffer even if it does not exist anymore.")
 
 (defun python-vterm--launch (ses-name env context)
   "Launch a new Python REPL buffer with SES-NAME and ENV.
@@ -143,7 +141,6 @@ python interpreter is ipython.  This times out after
         (vterm-environment (if context (plist-get context :env) env))
         (id (gensym "python-vterm-buffer")))
     (with-current-buffer new-buffer
-      (setq python-vterm-repl--buffer-id id)
       (when context
         (setq default-directory (plist-get context :cwd))
         (setq python-vterm-repl-script-buffer (plist-get context :script-buffer)))

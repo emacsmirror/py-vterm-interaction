@@ -6,7 +6,7 @@ and play nicely with =ipython=.
 
 See also [[https://github.com/shg/python-vterm.el][the original author's efforts]].
 
-* python-vterm
+* py-vterm-interaction
 
 Python-vterm provides a major-mode for an inferior Python process (or REPL) that runs in vterm, and a minor-mode that extends python-mode with the ability to interact with the inferior Python process. This is particularly useful for *fancy repls like =ipython= or =ptpython=*.
 
@@ -19,44 +19,44 @@ that information.
 Currently you can only install the package from github. With
 ~use-package~ and ~straight~ it looks as follows:
 #+begin_src elisp
-  (use-package python-vterm
-    :straight (:host github :repo "vale981/python-vterm.el")
-    :hook (python-mode . python-vterm-mode)
+  (use-package py-vterm-interaction
+    :straight (:host github :repo "vale981/py-vterm-interaction.el")
+    :hook (python-mode . py-vterm-interaction-mode)
     :config
-    (setq-default python-vterm-repl-program "ipython")
-    (setq-default python-vterm-silent-cells t))
+    (setq-default py-vterm-interaction-repl-program "ipython")
+    (setq-default py-vterm-interaction-silent-cells t))
 #+end_src
 
-For manual installation, download =python-vterm.el= into somewhere in your local directory and use =package-install-file= command. Please make sure [[https://github.com/PythonEditorSupport/python-emacs][python-mode]] and [[https://github.com/akermu/emacs-libvterm][emacs-libvterm]] are installed and configured correctly.
+For manual installation, download =py-vterm-interaction.el= into somewhere in your local directory and use =package-install-file= command. Please make sure [[https://github.com/PythonEditorSupport/python-emacs][python-mode]] and [[https://github.com/akermu/emacs-libvterm][emacs-libvterm]] are installed and configured correctly.
 
-Turn on =python-vterm-mode= in a =python-mode= buffer to use this package. A symbol “PY” in the mode line indicates that the python-mode buffer is ready to interact with the python-vterm REPL. Add the following line to your init file to enable =python-vterm-mode= in =python-mode= buffers automatically.
+Turn on =py-vterm-interaction-mode= in a =python-mode= buffer to use this package. A symbol “PY” in the mode line indicates that the python-mode buffer is ready to interact with the py-vterm-interaction REPL. Add the following line to your init file to enable =py-vterm-interaction-mode= in =python-mode= buffers automatically.
 
 #+BEGIN_SRC emacs-lisp
-(add-hook 'python-mode-hook #'python-vterm-mode)
+(add-hook 'python-mode-hook #'py-vterm-interaction-mode)
 #+END_SRC
 
-By default, the command named =python= in your =PATH= is used. You can use a Python executable in any path by setting the =python-vterm-repl-program= variable to its absolute path. The variable can contain switches for the =python= command. For example, you can use a =python= executable at a certain path, with 4 threads enabled, by the line like the following.
+By default, the command named =python= in your =PATH= is used. You can use a Python executable in any path by setting the =py-vterm-interaction-repl-program= variable to its absolute path. The variable can contain switches for the =python= command. For example, you can use a =python= executable at a certain path, with 4 threads enabled, by the line like the following.
 
 #+BEGIN_SRC emacs-lisp
-(setq-default python-vterm-repl-program "ipython -i")
+(setq-default py-vterm-interaction-repl-program "ipython -i")
 #+END_SRC
 
 Some commands (see below) can either paste code into the REPL verbatim
-or include it using ~%run -i~. If ~python-vterm-silent-cells~ is set to ~t~
+or include it using ~%run -i~. If ~py-vterm-interaction-silent-cells~ is set to ~t~
 #+begin_src emacs-lisp
-    (setq-default python-vterm-silent-cells t)
+    (setq-default py-vterm-interaction-silent-cells t)
 #+end_src
 the latter option will be used.
 
 ** How to use
 
-=M-x python-vterm-repl= (or =M-x python= if no other packages define it before python-vterm is loaded) opens an inferior Python REPL buffer.
+=M-x py-vterm-interaction-repl= (or =M-x python= if no other packages define it before py-vterm-interaction is loaded) opens an inferior Python REPL buffer.
 
-In a python script buffer with =python-vterm-mode= on, you can open a Python REPL with =M-x python-vterm-switch-to-repl-buffer= (or =C-c C-z=). See below for other commands.
+In a python script buffer with =py-vterm-interaction-mode= on, you can open a Python REPL with =M-x py-vterm-interaction-switch-to-repl-buffer= (or =C-c C-z=). See below for other commands.
 
 Both of the above operations open a REPL with the default session name =main=. You can specify a different session name by using the prefix argument =C-u=. A new session will be created and opened if there is no REPL with that session name.
 
-You can also specify a session name by defining a file local variable =python-vterm-session= (or =python-session= if no other packages pre-define it). If the variable is defined, =C-c C-z= will open a REPL with that session name.
+You can also specify a session name by defining a file local variable =py-vterm-interaction-session= (or =python-session= if no other packages pre-define it). If the variable is defined, =C-c C-z= will open a REPL with that session name.
 
 The package also contains a clone of [[https://docs.spyder-ide.org/3/editor.html#defining-code-cells][spyder]]'s code cells. Consider the following:
 #+begin_src python
@@ -70,8 +70,8 @@ The package also contains a clone of [[https://docs.spyder-ide.org/3/editor.html
 #+end_src
 Moving the point between any two cell markers (or between the buffer
 beginning/end and a marker) and executing
-~python-vterm-send-current-cell~ (=C-c C-j=) will send the contents of the
-block to the REPL. When setting ~python-vterm-silent-cells~ to ~t~, the
+~py-vterm-interaction-send-current-cell~ (=C-c C-j=) will send the contents of the
+block to the REPL. When setting ~py-vterm-interaction-silent-cells~ to ~t~, the
 cell content is written to a temporary file which is then executed in
 the REPL with the ~%run~ magic command.
 
@@ -85,7 +85,7 @@ automatically call it if it has no arguments. Consider the following:
       print("hi")
 #+end_src
 Moving the point inside of ~run_some_test~ and executing
-~python-vterm-run-current-function~ (=C-c C-f=) will load the function
+~py-vterm-interaction-run-current-function~ (=C-c C-f=) will load the function
 into the REPL and execute it. For a function with arguments like
 #+begin_src python
   #... some code
@@ -98,23 +98,23 @@ the function name and an opening parenthesis will be pasted into the reply.
 
 ** Key bindings
 
-*** python-vterm-mode
+*** py-vterm-interaction-mode
 
 #+begin_example
 Key         Command / Description
 ------------------------------------------------------------------------------------------
-C-c C-z     python-vterm-switch-to-repl-buffer
+C-c C-z     py-vterm-interaction-switch-to-repl-buffer
             Switch to the paired REPL buffer or to the one with a specified session name.
             With prefix ARG, prompt for session name.
 
-C-c C-c     python-vterm-send-region-or-current-line
+C-c C-c     py-vterm-interaction-send-region-or-current-line
             Send the content of the region if the region is active, or send the current
             line.
 
-C-c C-b     python-vterm-send-buffer
+C-c C-b     py-vterm-interaction-send-buffer
             Send the whole content of the script buffer to the Python REPL line by line.
 
-C-c C-j     python-vterm-send-current-cell
+C-c C-j     py-vterm-interaction-send-current-cell
             Send the current code "cell" to the Python REPL.
             Each block is delimited by `# %% <optional name>`.
 
@@ -122,50 +122,50 @@ C-c C-j     python-vterm-send-current-cell
             begin with the buffer. Likewise, if there is no marker after the
             point, the cell is assumed to end with the buffer.
 
-C-c C-f     python-vterm-run-current-function
+C-c C-f     py-vterm-interaction-run-current-function
             Send the current function the Python REPL and paste its name, ready to run.
             If the function has no arguments, the function call is run immediately.
 
-C-c C-r     python-vterm-send-run-buffer-file
+C-c C-r     py-vterm-interaction-send-run-buffer-file
             Send a line to evaluate the buffer's file using ipython %run magic.
 
 C-c C-i     Import the current buffer file like `from <module> import *' in the python repl.
             This is especially useful with `%autoload 3' in ipython.
 
-C-c C-d     python-vterm-send-cd-to-buffer-directory
+C-c C-d     py-vterm-interaction-send-cd-to-buffer-directory
             Send %cd function call to the Python REPL to change the current working
             directory of REPL to the buffer's directory.
 #+end_example
 
-*** python-vterm-repl-mode
+*** py-vterm-interaction-repl-mode
 
 #+begin_example
 Key         Command / Description
 ------------------------------------------------------------------------------------------
-C-c C-z     python-vterm-repl-switch-to-script-buffer
+C-c C-z     py-vterm-interaction-repl-switch-to-script-buffer
             Switch to the script buffer that is paired with the current Python REPL buffer.
 
-M-k         python-vterm-repl-clear-buffer
+M-k         py-vterm-interaction-repl-clear-buffer
             Clear the content of the Python REPL buffer.
 
-C-c C-t     python-vterm-repl-copy-mode
+C-c C-t     py-vterm-interaction-repl-copy-mode
             Enter copy mode.
 
-C-c M-r     python-vterm-repl-restart
+C-c M-r     py-vterm-interaction-repl-restart
             Restart the current inferior Python process. A new Python REPL will be opened in
             the same Emacs window, and the working directory and environment will be
             restored from the previous REPL process when possible.
 #+end_example
 
-*** python-vterm-repl-mode (copy mode)
+*** py-vterm-interaction-repl-mode (copy mode)
 
 #+begin_example
 Key         Command / Description
 ------------------------------------------------------------------------------------------
-C-c C-t     python-vterm-repl-copy-mode
+C-c C-t     py-vterm-interaction-repl-copy-mode
             Exit copy mode.
 
-<return>    python-vterm-repl-copy-mode-done
+<return>    py-vterm-interaction-repl-copy-mode-done
             Copy the region to the kill ring and exit copy mode.
 
 C-c C-r     vterm-reset-cursor-point

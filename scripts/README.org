@@ -1,5 +1,5 @@
 * REPL Scripts
-These are scripts intended to be run in the REPL by =python-vterm=. Each
+These are scripts intended to be run in the REPL by =py-vterm-interaction=. Each
 script (except =utility.py=) should contain only one function of the
 same name as the script file. All functions should not alter the
 global state and have no observable side effects in the REPL. They can

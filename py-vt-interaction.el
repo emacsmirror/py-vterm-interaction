@@ -1,13 +1,13 @@
-;;; python-vterm.el --- A mode for Python REPL using vterm -*- lexical-binding: t -*-
+;;; py-vterm-interaction.el --- A mode for Python REPL using vterm -*- lexical-binding: t -*-
 
-;; Copyright (C) 2020-2023 Shigeaki Nishina
+;; Copyright (C) 2020-2024 Shigeaki Nishina, Valentin Boettcher
 
 ;; Author: Shigeaki Nishina, Valentin Boettcher
 ;; Maintainer: Valentin Boettcher <hiro at protagon.space>
 ;; Created: May 11, 2024
-;; URL: https://github.com/vale981/python-vterm.el
+;; URL: https://github.com/vale981/python-fancy.el
 ;; Package-Requires: ((emacs "25.1") (vterm "0.0.1"))
-;; Version: 1.0.6
+;; Version: 1.0.0
 ;; Keywords: languages, python
 
 ;; This file is not part of GNU Emacs.
@@ -40,14 +40,14 @@
 ;;; Usage:
 
 ;; You must have python-mode and vterm installed.
-;; Install python-vterm.el manually using package.el
+;; Install py-vterm-interaction.el manually using package.el
 ;;
-;;   (package-install-file "/path-to-download-dir/python-vterm.el")
+;;   (package-install-file "/path-to-download-dir/py-vterm-interaction.el")
 ;;
 ;; Eval the following line. Add this line to your init file to enable this
 ;; mode in future sessions.
 ;;
-;;   (add-hook 'python-mode-hook #'python-vterm-mode)
+;;   (add-hook 'python-mode-hook #'py-vterm-interaction-mode)
 ;;
 ;; Now you can interact with an inferior Python REPL from a Python buffer.
 ;;
@@ -65,136 +65,136 @@
 
 
 ;;----------------------------------------------------------------------
-(defgroup python-vterm-repl nil
+(defgroup py-vterm-interaction-repl nil
   "A major mode for inferior Python REPL."
   :group 'python)
 
-(defvar-local python-vterm-repl-program "python"
+(defvar-local py-vterm-interaction-repl-program "python"
   "Name of the command for executing Python code.
 Maybe either a command in the path, like python
 or an absolute path name, like /usr/local/bin/python
 parameters may be used, like python -q")
 
-(defvar-local python-vterm-silent-cells nil
+(defvar-local py-vterm-interaction-silent-cells nil
   "If non-nil, the PYTHON-VTERM-SEND-CURRENT-CELL will use ipythons `%run` magic to run a code cell.
 
 For plain python `exec(open(...).read())` is used.")
 
-(defvar-local python-vterm-repl-script-buffer nil)
-(defvar-local python-vterm-repl-interpreter :python
+(defvar-local py-vterm-interaction-repl-script-buffer nil)
+(defvar-local py-vterm-interaction-repl-interpreter :python
   "Reflects whether the inferior Python REPL is a Python or IPython shell.
 
 If in doubt, set this to :python.")
 
-(defvar python-vterm-repl-mode-map
+(defvar py-vterm-interaction-repl-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-z") #'python-vterm-repl-switch-to-script-buffer)
-    (define-key map (kbd "M-k") #'python-vterm-repl-clear-buffer)
-    (define-key map (kbd "C-c C-t") #'python-vterm-repl-copy-mode)
+    (define-key map (kbd "C-c C-z") #'py-vterm-interaction-repl-switch-to-script-buffer)
+    (define-key map (kbd "M-k") #'py-vterm-interaction-repl-clear-buffer)
+    (define-key map (kbd "C-c C-t") #'py-vterm-interaction-repl-copy-mode)
     (define-key map (kbd "C-l") #'recenter-top-bottom)
-    (define-key map (kbd "C-c M-r") #'python-vterm-repl-restart)
+    (define-key map (kbd "C-c M-r") #'py-vterm-interaction-repl-restart)
     map))
 
-(define-derived-mode python-vterm-repl-mode vterm-mode "Inf-Python"
+(define-derived-mode py-vterm-interaction-repl-mode vterm-mode "Inf-Python"
   "A major mode for inferior Python REPL."
-  :group 'python-vterm-repl)
+  :group 'py-vterm-interaction-repl)
 
-(defcustom python-vterm-repl-mode-hook nil
+(defcustom py-vterm-interaction-repl-mode-hook nil
   "Hook run after starting a Python script buffer with an inferior Python REPL."
   :type 'hook
-  :group 'python-vterm-repl)
+  :group 'py-vterm-interaction-repl)
 
-(defcustom python-vterm-repl-launch-timeout 5
+(defcustom py-vterm-interaction-repl-launch-timeout 5
   "Time in seconds to wait for the Python REPL to start."
   :type 'number
-  :group 'python-vterm-repl)
+  :group 'py-vterm-interaction-repl)
 
-(defcustom python-vterm-repl-script-timeout 5
+(defcustom py-vterm-interaction-repl-script-timeout 5
   "Time in seconds to wait for the Python REPL to execute a script."
   :type 'number
-  :group 'python-vterm-repl)
+  :group 'py-vterm-interaction-repl)
 
-(defun python-vterm-repl-buffer-name (&optional session-name)
+(defun py-vterm-interaction-repl-buffer-name (&optional session-name)
   "Return a Python REPL buffer name whose session name is SESSION-NAME.
 If SESSION-NAME is not given, the default session name `main' is assumed."
   (format "*python:%s*" (or session-name "main")))
 
-(defun python-vterm-repl-session-name (repl-buffer)
+(defun py-vterm-interaction-repl-session-name (repl-buffer)
   "Return the session name of REPL-BUFFER."
   (let ((bn (buffer-name repl-buffer)))
     (if (string= (substring bn 1 8) "python:")
         (substring bn 8 -1)
       nil)))
 
-(defvar python-vterm-repl--launch-timers '()
+(defvar py-vterm-interaction-repl--launch-timers '()
   "A timer that is used to determine the interpreter upon launch.")
 
 
-(defun python-vterm--launch (ses-name env context)
+(defun py-vterm-interaction--launch (ses-name env context)
   "Launch a new Python REPL buffer with SES-NAME and ENV.
 
 If CONTEXT is given, it is used to set the working directory and
 the script buffer.  It is also attempted to detect whether the
 python interpreter is ipython.  This times out after
-`python-vterm-repl-launch-timeout' seconds."
+`py-vterm-interaction-repl-launch-timeout' seconds."
   (let ((new-buffer
-         (generate-new-buffer (python-vterm-repl-buffer-name ses-name)))
-        (vterm-shell python-vterm-repl-program)
+         (generate-new-buffer (py-vterm-interaction-repl-buffer-name ses-name)))
+        (vterm-shell py-vterm-interaction-repl-program)
         (vterm-environment (if context (plist-get context :env) env))
-        (id (gensym "python-vterm-buffer")))
+        (id (gensym "py-vterm-interaction-buffer")))
     (with-current-buffer new-buffer
       (when context
         (setq default-directory (plist-get context :cwd))
-        (setq python-vterm-repl-script-buffer (plist-get context :script-buffer)))
-      (python-vterm-repl-mode)
+        (setq py-vterm-interaction-repl-script-buffer (plist-get context :script-buffer)))
+      (py-vterm-interaction-repl-mode)
 
       (push (cons id
                   (run-with-timer .1 1
                                   (lambda (buffer)
-                                    (let ((timer (alist-get id python-vterm-repl--launch-timers)))
+                                    (let ((timer (alist-get id py-vterm-interaction-repl--launch-timers)))
                                       (if (and buffer (buffer-live-p buffer))
-                                          (if (python-vterm-repl-prompt-status)
+                                          (if (py-vterm-interaction-repl-prompt-status)
                                               (progn
-                                                (setq python-vterm-repl-interpreter
-                                                      (if (eq (python-vterm--execute-script "is_ipython") :false)
+                                                (setq py-vterm-interaction-repl-interpreter
+                                                      (if (eq (py-vterm-interaction--execute-script "is_ipython") :false)
                                                           :python :ipython))
                                                 (cancel-timer timer)))
                                         (cancel-timer timer))))
                                   new-buffer))
-            python-vterm-repl--launch-timers)
+            py-vterm-interaction-repl--launch-timers)
       (add-function :filter-args (process-filter vterm--process)
-                    (python-vterm-repl-run-filter-functions-func ses-name))
-      (setq python-vterm-session ses-name)
-      (message python-vterm-session))
+                    (py-vterm-interaction-repl-run-filter-functions-func ses-name))
+      (setq py-vterm-interaction-session ses-name)
+      (message py-vterm-interaction-session))
     new-buffer))
 
-(defun python-vterm-repl-buffer (&optional session-name restart)
+(defun py-vterm-interaction-repl-buffer (&optional session-name restart)
   "Return an inferior Python REPL buffer of the session name SESSION-NAME.
 If there exists no such buffer, one is created and returned.
 With non-nil RESTART, the existing buffer will be killed and
 recreated."
-  (let ((ses-name (or session-name python-vterm-session "main"))
+  (let ((ses-name (or session-name py-vterm-interaction-session "main"))
         (env (cons "TERM=xterm-256color" process-environment)))
-    (if-let ((buffer (get-buffer (python-vterm-repl-buffer-name ses-name)))
+    (if-let ((buffer (get-buffer (py-vterm-interaction-repl-buffer-name ses-name)))
              (alive (vterm-check-proc buffer))
              (no-restart (not restart)))
         buffer
       (if (not buffer)
-          (python-vterm--launch ses-name env nil)
+          (py-vterm-interaction--launch ses-name env nil)
         (save-excursion
           (let* ((win (get-buffer-window buffer))
                  (proc (get-buffer-process buffer))
-                 (context (if proc (python-vterm-repl-get-context buffer))))
+                 (context (if proc (py-vterm-interaction-repl-get-context buffer))))
             (with-current-buffer buffer
               (rename-buffer (concat (buffer-name) ":orphaned")))
-            (let ((new-buffer (python-vterm--launch ses-name env context)))
+            (let ((new-buffer (py-vterm-interaction--launch ses-name env context)))
               (when win
                 (select-window win)
                 (switch-to-buffer new-buffer))
               (if (process-live-p proc) (delete-process proc))
               new-buffer)))))))
 
-(defun python-vterm-repl-list-sessions ()
+(defun py-vterm-interaction-repl-list-sessions ()
   "Return a list of existing Python REPL sessions."
   (mapcan (lambda (bn)
             (if (string-match "\\*python:\\(.*\\)\\*" bn)
@@ -202,7 +202,7 @@ recreated."
               nil))
           (mapcar #'buffer-name (buffer-list))))
 
-(defun python-vterm-repl (&optional arg)
+(defun py-vterm-interaction-repl (&optional arg)
   "Create an inferior Python REPL buffer and open it.
 The buffer name will be `*python:main*' where `main' is the default session name.
 With prefix ARG, prompt for a session name.
@@ -210,55 +210,55 @@ If there's already an alive REPL buffer for the session, it will be opened."
   (interactive "P")
   (let* ((session-name
           (cond ((null arg) nil)
-                (t (completing-read "Session name: " (python-vterm-repl-list-sessions) nil nil nil nil
-                                    (python-vterm-repl-session-name (python-vterm-fellow-repl-buffer))))))
+                (t (completing-read "Session name: " (py-vterm-interaction-repl-list-sessions) nil nil nil nil
+                                    (py-vterm-interaction-repl-session-name (py-vterm-interaction-fellow-repl-buffer))))))
          (orig-buffer (current-buffer))
-         (repl-buffer (python-vterm-repl-buffer session-name)))
-    (if (and (boundp 'python-vterm-mode) python-vterm-mode)
+         (repl-buffer (py-vterm-interaction-repl-buffer session-name)))
+    (if (and (boundp 'py-vterm-interaction-mode) py-vterm-interaction-mode)
         (with-current-buffer repl-buffer
-          (setq python-vterm-repl-script-buffer orig-buffer)))
+          (setq py-vterm-interaction-repl-script-buffer orig-buffer)))
     (pop-to-buffer-same-window repl-buffer)))
 
-(defun python-vterm-repl-switch-to-script-buffer ()
+(defun py-vterm-interaction-repl-switch-to-script-buffer ()
   "Switch to the script buffer that is paired with this Python REPL buffer."
   (interactive)
   (let ((repl-buffer (current-buffer))
-        (script-buffer (if (buffer-live-p python-vterm-repl-script-buffer)
-                           python-vterm-repl-script-buffer
+        (script-buffer (if (buffer-live-p py-vterm-interaction-repl-script-buffer)
+                           py-vterm-interaction-repl-script-buffer
                          nil)))
     (if script-buffer
         (with-current-buffer script-buffer
-          (setq python-vterm-fellow-repl-buffer repl-buffer)
+          (setq py-vterm-interaction-fellow-repl-buffer repl-buffer)
           (switch-to-buffer-other-window script-buffer)))))
 
-(defun python-vterm-repl-restart ()
+(defun py-vterm-interaction-repl-restart ()
   "Restart the inferior Python process in the current REPL buffer."
   (interactive)
   (if (y-or-n-p "Restart Python REPL? ")
-      (python-vterm-repl-buffer (python-vterm-repl-session-name (current-buffer)) t)))
+      (py-vterm-interaction-repl-buffer (py-vterm-interaction-repl-session-name (current-buffer)) t)))
 
-(defun python-vterm-repl-clear-buffer ()
+(defun py-vterm-interaction-repl-clear-buffer ()
   "Clear the content of the Python REPL buffer."
   (interactive)
   (save-excursion
     (goto-char (point-min))
     (vterm-clear 1)))
 
-(defvar-local python-vterm-repl-filter-functions '()
+(defvar-local py-vterm-interaction-repl-filter-functions '()
   "List of filter functions that process the output to the REPL buffer.")
 
-(defun python-vterm-repl-run-filter-functions-func (session)
+(defun py-vterm-interaction-repl-run-filter-functions-func (session)
   "Return a function that runs registered filter functions for SESSION with args."
   (lambda (args)
-    (with-current-buffer (python-vterm-repl-buffer session)
+    (with-current-buffer (py-vterm-interaction-repl-buffer session)
       (let ((proc (car args))
             (str (cadr args)))
-        (let ((funcs python-vterm-repl-filter-functions))
+        (let ((funcs py-vterm-interaction-repl-filter-functions))
           (while funcs
             (setq str (apply (pop funcs) (list str))))
           (list proc str))))))
 
-(defun python-vterm-repl-prompt-status ()
+(defun py-vterm-interaction-repl-prompt-status ()
   "Check and return the prompt status of the REPL.
 Return a corresponding symbol or nil if not ready for input."
   (let* ((bs (buffer-string))
@@ -276,15 +276,15 @@ Return a corresponding symbol or nil if not ready for input."
         ((rx bol "In [" (one-or-more (any "0-9")) "]: " eol) :ipython)))))
 
 
-(defun python-vterm--get-script-file (name)
+(defun py-vterm-interaction--get-script-file (name)
   "Return the full path of the script file with NAME."
   (expand-file-name (concat "./scripts/" name ".py")
-                    (file-name-directory (symbol-file 'python-vterm-mode))))
+                    (file-name-directory (symbol-file 'py-vterm-interaction-mode))))
 
-(defun python-vterm--execute-script (name &rest args)
+(defun py-vterm-interaction--execute-script (name &rest args)
   "Load the script with file NAME and call the eponymous function with ARGS.
 Returns either the result of the function or nil if execution
-times out after `python-vterm-repl-script-timeout'.
+times out after `py-vterm-interaction-repl-script-timeout'.
 
 The script file is expected to be in the `scripts' directory of
 the package and must contain exactly one function with the same
@@ -294,11 +294,11 @@ arguments ARGS and the result is returned as a parsed JSON object
 in the plist format.  The functions from the utility script are
 loaded into the repl as well.  All loaded functions and modules
 will be cleaned up afterwards."
-  (let ((utility-file (python-vterm--get-script-file name))
-        (script-file (python-vterm--get-script-file "utility"))
-        (tmpfile (make-temp-file "python-vterm--" nil ".json"))
-        (python-vterm-paste-with-return nil)
-        (python-vterm-paste-with-clear nil)
+  (let ((utility-file (py-vterm-interaction--get-script-file name))
+        (script-file (py-vterm-interaction--get-script-file "utility"))
+        (tmpfile (make-temp-file "py-vterm-interaction--" nil ".json"))
+        (py-vterm-interaction-paste-with-return nil)
+        (py-vterm-interaction-paste-with-clear nil)
         (arglist (concat
                   (seq-reduce
                    (lambda (el rest)
@@ -308,18 +308,18 @@ will be cleaned up afterwards."
         (up-to-now (buffer-string))
         (result nil))
 
-    (python-vterm-clear-line)
-    (python-vterm-paste-string (format "exec(open(\"%s\").read());" utility-file))
-    (python-vterm-paste-string (format "exec(open(\"%s\").read());" script-file))
-    (python-vterm-paste-string (format "%s(\"%s\"%s);" name tmpfile arglist))
+    (py-vterm-interaction-clear-line)
+    (py-vterm-interaction-paste-string (format "exec(open(\"%s\").read());" utility-file))
+    (py-vterm-interaction-paste-string (format "exec(open(\"%s\").read());" script-file))
+    (py-vterm-interaction-paste-string (format "%s(\"%s\"%s);" name tmpfile arglist))
 
     ;; clean up all utility stuff
-    (python-vterm-paste-string "del dump_json;")
-    (python-vterm-paste-string (format "del %s" name))
-    (python-vterm-send-return-key)
+    (py-vterm-interaction-paste-string "del dump_json;")
+    (py-vterm-interaction-paste-string (format "del %s" name))
+    (py-vterm-interaction-send-return-key)
 
-    (with-timeout (python-vterm-repl-script-timeout
-                   (progn (display-warning 'python-vterm "Python script did not finish in time.")
+    (with-timeout (py-vterm-interaction-repl-script-timeout
+                   (progn (display-warning 'py-vterm-interaction "Python script did not finish in time.")
                           (delete-file tmpfile)
                           nil))
       (while
@@ -335,121 +335,121 @@ will be cleaned up afterwards."
                        (setq result (json-parse-buffer :object-type 'plist :array-type 'list))
                        nil)))))
       (let ((inhibit-read-only t))
-        (python-vterm-repl-clear-buffer)
+        (py-vterm-interaction-repl-clear-buffer)
         (insert up-to-now))
       result)))
 
 
-(defun python-vterm--read-script (name)
+(defun py-vterm-interaction--read-script (name)
   "Read the content of the script file with NAME.
 The path of the script is expanded relative to the `scripts' directory."
-  (let ((script-file (python-vterm--get-script-file name)))
+  (let ((script-file (py-vterm-interaction--get-script-file name)))
     (with-temp-buffer
       (insert-file-contents script-file)
       (buffer-string))))
 
-(defun python-vterm-repl-get-context (buf)
+(defun py-vterm-interaction-repl-get-context (buf)
   "Obtain context information of the REPL buffer BUF.
 This returns a list of the current working directory of teh
 inferior Python process and the current active environment."
   (with-current-buffer buf
-    (let ((context (python-vterm--execute-script "get_env")))
-      (plist-put context :script-buffer python-vterm-repl-script-buffer))))
+    (let ((context (py-vterm-interaction--execute-script "get_env")))
+      (plist-put context :script-buffer py-vterm-interaction-repl-script-buffer))))
 
-(defvar python-vterm-repl-copy-mode-map
+(defvar py-vterm-interaction-repl-copy-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-c C-t") #'python-vterm-repl-copy-mode)
-    (define-key map [return] #'python-vterm-repl-copy-mode-done)
-    (define-key map (kbd "RET") #'python-vterm-repl-copy-mode-done)
+    (define-key map (kbd "C-c C-t") #'py-vterm-interaction-repl-copy-mode)
+    (define-key map [return] #'py-vterm-interaction-repl-copy-mode-done)
+    (define-key map (kbd "RET") #'py-vterm-interaction-repl-copy-mode-done)
     (define-key map (kbd "C-c C-r") #'vterm-reset-cursor-point)
     map))
 
-(define-minor-mode python-vterm-repl-copy-mode
+(define-minor-mode py-vterm-interaction-repl-copy-mode
   "Toggle copy mode."
-  :group 'python-vterm-repl
+  :group 'py-vterm-interaction-repl
   :lighter " VTermCopy"
-  :keymap python-vterm-repl-copy-mode-map
-  (if python-vterm-repl-copy-mode
+  :keymap py-vterm-interaction-repl-copy-mode-map
+  (if py-vterm-interaction-repl-copy-mode
       (progn
         (message "Start copy mode")
         (use-local-map nil)
         (vterm-send-stop))
     (vterm-reset-cursor-point)
-    (use-local-map python-vterm-repl-mode-map)
+    (use-local-map py-vterm-interaction-repl-mode-map)
     (vterm-send-start)
     (message "End copy mode")))
 
-(defun python-vterm-repl-copy-mode-done ()
+(defun py-vterm-interaction-repl-copy-mode-done ()
   "Save the active region to the kill ring and exit copy mode."
   (interactive)
   (if (region-active-p)
       (kill-ring-save (region-beginning) (region-end))
     (user-error "No active region"))
-  (python-vterm-repl-copy-mode -1))
+  (py-vterm-interaction-repl-copy-mode -1))
 
 
 ;;----------------------------------------------------------------------
-(defgroup python-vterm nil
+(defgroup py-vterm-interaction nil
   "A minor mode to interact with an inferior Python REPL."
   :group 'python)
 
-(defcustom python-vterm-hook nil
+(defcustom py-vterm-interaction-hook nil
   "Hook run after starting a Python script buffer with an inferior Python REPL."
   :type 'hook
-  :group 'python-vterm)
+  :group 'py-vterm-interaction)
 
-(defvar-local python-vterm-paste-with-return t
+(defvar-local py-vterm-interaction-paste-with-return t
   "Whether to send a return key after pasting a string to the Python REPL.")
 
-(defvar-local python-vterm-paste-with-clear t
+(defvar-local py-vterm-interaction-paste-with-clear t
   "Whether to clear the line before pasting a string to the Python REPL.")
 
-(defvar-local python-vterm-fellow-repl-buffer nil)
-(defvar-local python-vterm-session nil)
-(defvar-local python-vterm-context nil)
+(defvar-local py-vterm-interaction-fellow-repl-buffer nil)
+(defvar-local py-vterm-interaction-session nil)
+(defvar-local py-vterm-interaction-context nil)
 
-(defun python-vterm-fellow-repl-buffer (&optional session-name)
+(defun py-vterm-interaction-fellow-repl-buffer (&optional session-name)
   "Return the paired REPL buffer or the one specified with SESSION-NAME.
 If SESSION-NAME is not specified, try to return the currently
 associated repl buffer or create a new one with the currently
 associated session-name."
-  (let ((session (or session-name python-vterm-session)))
+  (let ((session (or session-name py-vterm-interaction-session)))
     (if session
-        (python-vterm-repl-buffer session-name)
-      (if (buffer-live-p python-vterm-fellow-repl-buffer)
-          python-vterm-fellow-repl-buffer
-        (if python-vterm-session
-            (python-vterm-repl-buffer python-vterm-session)
-          (python-vterm-repl-buffer))))))
+        (py-vterm-interaction-repl-buffer session-name)
+      (if (buffer-live-p py-vterm-interaction-fellow-repl-buffer)
+          py-vterm-interaction-fellow-repl-buffer
+        (if py-vterm-interaction-session
+            (py-vterm-interaction-repl-buffer py-vterm-interaction-session)
+          (py-vterm-interaction-repl-buffer))))))
 
-(defun python-vterm-switch-to-repl-buffer (&optional arg)
+(defun py-vterm-interaction-switch-to-repl-buffer (&optional arg)
   "Switch to the paired REPL buffer or to the one with a specified session name.
 With prefix ARG, prompt for session name. If a session name is
 provided all future commands will use that session."
   (interactive "P")
   (let* ((session-name
-          (cond ((null arg) (or python-vterm-session nil))
-                (t (completing-read "Session name: " (python-vterm-repl-list-sessions) nil nil nil nil
-                                    (python-vterm-repl-session-name (python-vterm-fellow-repl-buffer))))))
+          (cond ((null arg) (or py-vterm-interaction-session nil))
+                (t (completing-read "Session name: " (py-vterm-interaction-repl-list-sessions) nil nil nil nil
+                                    (py-vterm-interaction-repl-session-name (py-vterm-interaction-fellow-repl-buffer))))))
          (script-buffer (current-buffer))
-         (repl-buffer (python-vterm-fellow-repl-buffer session-name)))
-    (setq python-vterm-fellow-repl-buffer repl-buffer)
-    (setq python-vterm-session session-name)
+         (repl-buffer (py-vterm-interaction-fellow-repl-buffer session-name)))
+    (setq py-vterm-interaction-fellow-repl-buffer repl-buffer)
+    (setq py-vterm-interaction-session session-name)
     (with-current-buffer repl-buffer
-      (setq python-vterm-repl-script-buffer script-buffer)
+      (setq py-vterm-interaction-repl-script-buffer script-buffer)
       (switch-to-buffer-other-window repl-buffer))))
 
-(defun python-vterm-send-return-key ()
+(defun py-vterm-interaction-send-return-key ()
   "Send a return key to the Python REPL."
-  (with-current-buffer (python-vterm-fellow-repl-buffer)
+  (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
     (vterm-send-return)))
 
-(defun python-vterm-send-backspace ()
+(defun py-vterm-interaction-send-backspace ()
   "Send a backspace key to the Python REPL."
-  (with-current-buffer (python-vterm-fellow-repl-buffer)
+  (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
     (vterm-send-backspace)))
 
-(defun python-vterm-send-current-line ()
+(defun py-vterm-interaction-send-current-line ()
   "Send the current line to the Python REPL, and move to the next line.
 This sends a newline after the content of the current line even if there's no
 newline at the end.  A newline is also inserted after the current line of the
@@ -462,65 +462,65 @@ script buffer."
           (line (string-trim (thing-at-point 'line t))))
       (unless (and (zerop clmn) char)
         (when (/= 0 clmn)
-          (python-vterm-paste-string line)
-          (if (not python-vterm-paste-with-return)
-              (python-vterm-send-return-key))
+          (py-vterm-interaction-paste-string line)
+          (if (not py-vterm-interaction-paste-with-return)
+              (py-vterm-interaction-send-return-key))
           (if (not char)
               (newline))))))
   (forward-line))
 
-(defun python-vterm-paste-string (string)
+(defun py-vterm-interaction-paste-string (string)
   "Send STRING to the Python REPL buffer using brackted paste mode."
-  (with-current-buffer (python-vterm-fellow-repl-buffer)
+  (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
     (goto-char (point-max))
-    (when python-vterm-paste-with-clear
-      (python-vterm-clear-line))
+    (when py-vterm-interaction-paste-with-clear
+      (py-vterm-interaction-clear-line))
     (vterm-send-string string t)
-    (if python-vterm-paste-with-return
-        (python-vterm-send-return-key))))
+    (if py-vterm-interaction-paste-with-return
+        (py-vterm-interaction-send-return-key))))
 
-(defun python-vterm-clear-line ()
+(defun py-vterm-interaction-clear-line ()
   "Clear the current line in the Python REPL buffer."
-  (with-current-buffer (python-vterm-fellow-repl-buffer)
+  (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
     (goto-char (point-max))
     (vterm-send-key (kbd "C-a"))
     (vterm-send-key (kbd "C-k"))))
 
-(defun python-vterm-ensure-newline (str)
+(defun py-vterm-interaction-ensure-newline (str)
   "Add a newline at the end of STR if the last character is not a newline."
   (concat str (if (string= (substring str -1 nil) "\n") "" "\n")))
 
-(defun python-vterm-send-region-or-current-line ()
+(defun py-vterm-interaction-send-region-or-current-line ()
   "Send the content of the region if the region is active, or send the current line."
   (interactive)
   (if (use-region-p)
       (let ((str (buffer-substring-no-properties (region-beginning) (region-end))))
-        (python-vterm-paste-string str)
+        (py-vterm-interaction-paste-string str)
         (deactivate-mark))
-    (python-vterm-send-current-line)))
+    (py-vterm-interaction-send-current-line)))
 
-(defun python-vterm--load-file (file &optional comment)
+(defun py-vterm-interaction--load-file (file &optional comment)
   "Load the content of the file with FILE into the Python REPL buffer."
-  (if (eq python-vterm-repl-interpreter :ipython)
+  (if (eq py-vterm-interaction-repl-interpreter :ipython)
       (format "%%run -i %s # %s" file (or comment ""))
     (format "exec(open(\"%s\").read()) # %s" file comment)))
 
-(defun python-vterm--send-maybe-silent (string &optional comment)
+(defun py-vterm-interaction--send-maybe-silent (string &optional comment)
   "Send STRING to the Python REPL buffer, possibly using `%run -i' with a temp file."
 
-  (with-current-buffer (python-vterm-fellow-repl-buffer)
-    (if python-vterm-silent-cells
-        (let ((tmpfile (make-temp-file "python-vterm" nil ".py")))
+  (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
+    (if py-vterm-interaction-silent-cells
+        (let ((tmpfile (make-temp-file "py-vterm-interaction" nil ".py")))
           (with-temp-file tmpfile
             (insert string))
-          (python-vterm-paste-string (python-vterm--load-file tmpfile comment))
+          (py-vterm-interaction-paste-string (py-vterm-interaction--load-file tmpfile comment))
           (run-with-timer 10 nil
                           (lambda (tmpfile)
                             (delete-file tmpfile))
                           tmpfile))
-      (python-vterm-paste-string string))))
+      (py-vterm-interaction-paste-string string))))
 
-(defun python-vterm-send-current-cell ()
+(defun py-vterm-interaction-send-current-cell ()
   "Send the current code \"cell\" to the Python REPL.
 Each block is delimited by `# %% <optional name>`.
 
@@ -539,11 +539,11 @@ point, the cell is assumed to end with the buffer."
              (end (or (save-excursion (re-search-forward cell-regex (point-max) t))
                       (point-max)))
              (cell-content (buffer-substring-no-properties start end)))
-        (python-vterm--send-maybe-silent cell-content cell-name)
-        (when (not python-vterm-paste-with-return)
-          (python-vterm-send-return-key))))))
+        (py-vterm-interaction--send-maybe-silent cell-content cell-name)
+        (when (not py-vterm-interaction-paste-with-return)
+          (py-vterm-interaction-send-return-key))))))
 
-(defun python-vterm-run-current-function ()
+(defun py-vterm-interaction-run-current-function ()
   "Send the current function the Python REPL and paste its name, ready to run.
 If the function has no arguments, the function call is run immediately."
   (interactive)
@@ -554,7 +554,7 @@ If the function has no arguments, the function call is run immediately."
         (if name-found
             (let ((name (match-string 1))
                   (args (match-string 2))
-                  (python-vterm-paste-with-return nil)
+                  (py-vterm-interaction-paste-with-return nil)
                   (begin (region-beginning))
                   (end (region-end)))
 
@@ -568,86 +568,86 @@ If the function has no arguments, the function call is run immediately."
                              nil))))
 
               (let ((func (buffer-substring-no-properties begin end)))
-                (python-vterm--send-maybe-silent func name)
-                (python-vterm-send-return-key))
+                (py-vterm-interaction--send-maybe-silent func name)
+                (py-vterm-interaction-send-return-key))
 
               (if (string-empty-p args)
                   (progn
-                    (python-vterm-paste-string (format "%s()" name))
-                    (python-vterm-send-return-key))
-                (python-vterm-paste-string (format "%s(" name))))
+                    (py-vterm-interaction-paste-string (format "%s()" name))
+                    (py-vterm-interaction-send-return-key))
+                (py-vterm-interaction-paste-string (format "%s(" name))))
           (message "No function found"))))))
 
-(defun python-vterm-send-buffer ()
+(defun py-vterm-interaction-send-buffer ()
   "Send the whole content of the script buffer to the Python REPL line by line."
   (interactive)
-  (let ((python-vterm-paste-with-return t)
-        (python-vterm-paste-with-clear nil))
+  (let ((py-vterm-interaction-paste-with-return t)
+        (py-vterm-interaction-paste-with-clear nil))
 
-    (python-vterm-paste-string (buffer-string))))
+    (py-vterm-interaction-paste-string (buffer-string))))
 
-(defun python-vterm-send-run-buffer-file ()
+(defun py-vterm-interaction-send-run-buffer-file ()
   "Run the current buffer file in the python vterm buffer.
 
   This is equivalent to running `%run -i <buffer-file-name>` in the python vterm buffer."
   (interactive)
   (let ((file buffer-file-name)
-        (python-vterm-paste-with-return t))
-    (with-current-buffer (python-vterm-fellow-repl-buffer)
-      (python-vterm-paste-string (python-vterm--load-file file "load script buffer")))))
+        (py-vterm-interaction-paste-with-return t))
+    (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
+      (py-vterm-interaction-paste-string (py-vterm-interaction--load-file file "load script buffer")))))
 
-(defun python-vterm-send-import-buffer-file ()
+(defun py-vterm-interaction-send-import-buffer-file ()
   "Import the current buffer file like `from <module> import *' in the python repl."
   (interactive)
   (let ((file buffer-file-name)
-        (python-vterm-paste-with-return t))
-    (with-current-buffer (python-vterm-fellow-repl-buffer)
-      (python-vterm--execute-script "star_import_script" file))))
+        (py-vterm-interaction-paste-with-return t))
+    (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
+      (py-vterm-interaction--execute-script "star_import_script" file))))
 
-(defun python-vterm-send-cd-to-buffer-directory ()
+(defun py-vterm-interaction-send-cd-to-buffer-directory ()
   "Change the REPL's working directory to the directory of the buffer file."
   (interactive)
   (if buffer-file-name
       (let ((buffer-directory (file-name-directory buffer-file-name)))
-        (with-current-buffer (python-vterm-fellow-repl-buffer)
-          (python-vterm-paste-string (if (eq python-vterm-repl-interpreter :ipython)
+        (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
+          (py-vterm-interaction-paste-string (if (eq py-vterm-interaction-repl-interpreter :ipython)
                                          (format "%%cd %s" buffer-directory)
                                        (format "import os; os.chdir(\"%s\")" buffer-directory)))
           (setq default-directory buffer-directory)))
     (message "The buffer is not associated with a directory.")))
 
-(defalias 'python-vterm-sync-wd 'python-vterm-send-cd-to-buffer-directory)
+(defalias 'py-vterm-interaction-sync-wd 'py-vterm-interaction-send-cd-to-buffer-directory)
 
-(defun python-vterm-fellow-repl-prompt-status ()
+(defun py-vterm-interaction-fellow-repl-prompt-status ()
   "Return REPL mode or nil if REPL is not ready for input."
-  (with-current-buffer (python-vterm-fellow-repl-buffer)
-    (python-vterm-repl-prompt-status)))
+  (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
+    (py-vterm-interaction-repl-prompt-status)))
 
 ;;;###autoload
-(define-minor-mode python-vterm-mode
+(define-minor-mode py-vterm-interaction-mode
   "A minor mode for a Python script buffer that interacts with an inferior Python REPL."
   :init-value nil
   :lighter " PY"
   :keymap
-  `((,(kbd "C-c C-z") . python-vterm-switch-to-repl-buffer)
-    (,(kbd "C-c C-c") . python-vterm-send-region-or-current-line)
-    (,(kbd "C-c C-j") . python-vterm-send-current-cell)
-    (,(kbd "C-c C-f") . python-vterm-run-current-function)
-    (,(kbd "C-c C-i") . python-vterm-send-import-buffer-file)
-    (,(kbd "C-c C-b") . python-vterm-send-buffer)
-    (,(kbd "C-c C-r") . python-vterm-send-run-buffer-file)
-    (,(kbd "C-c C-d") . python-vterm-send-cd-to-buffer-directory)))
+  `((,(kbd "C-c C-z") . py-vterm-interaction-switch-to-repl-buffer)
+    (,(kbd "C-c C-c") . py-vterm-interaction-send-region-or-current-line)
+    (,(kbd "C-c C-j") . py-vterm-interaction-send-current-cell)
+    (,(kbd "C-c C-f") . py-vterm-interaction-run-current-function)
+    (,(kbd "C-c C-i") . py-vterm-interaction-send-import-buffer-file)
+    (,(kbd "C-c C-b") . py-vterm-interaction-send-buffer)
+    (,(kbd "C-c C-r") . py-vterm-interaction-send-run-buffer-file)
+    (,(kbd "C-c C-d") . py-vterm-interaction-send-cd-to-buffer-directory)))
 
 
 ;;----------------------------------------------------------------------
 ;; Define some utility aliases but not override if the names are already used.
 (unless (fboundp 'python)
-  (defalias 'python 'python-vterm-repl))
+  (defalias 'python 'py-vterm-interaction-repl))
 
 (unless (boundp 'python-session)
-  (defvaralias 'python-session 'python-vterm-session))
+  (defvaralias 'python-session 'py-vterm-interaction-session))
 
 
-(provide 'python-vterm)
+(provide 'py-vterm-interaction)
 
-;;; python-vterm.el ends here
+;;; py-vterm-interaction.el ends here

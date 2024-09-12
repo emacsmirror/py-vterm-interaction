@@ -7,7 +7,7 @@
 ;; Created: May 11, 2024
 ;; URL: https://github.com/vale981/python-vterm.el
 ;; Package-Requires: ((emacs "25.1") (vterm "0.0.1"))
-;; Version: 1.0.5
+;; Version: 1.0.6
 ;; Keywords: languages, python
 
 ;; This file is not part of GNU Emacs.

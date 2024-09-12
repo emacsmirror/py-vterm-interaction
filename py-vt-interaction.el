@@ -7,7 +7,7 @@
 ;; Created: May 11, 2024
 ;; URL: https://github.com/vale981/python-fancy.el
 ;; Package-Requires: ((emacs "25.1") (vterm "0.0.1"))
-;; Version: 1.0.0
+;; Version: 1.0.6
 ;; Keywords: languages, python
 
 ;; This file is not part of GNU Emacs.
@@ -611,8 +611,8 @@ If the function has no arguments, the function call is run immediately."
       (let ((buffer-directory (file-name-directory buffer-file-name)))
         (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
           (py-vterm-interaction-paste-string (if (eq py-vterm-interaction-repl-interpreter :ipython)
-                                         (format "%%cd %s" buffer-directory)
-                                       (format "import os; os.chdir(\"%s\")" buffer-directory)))
+                                                 (format "%%cd %s" buffer-directory)
+                                               (format "import os; os.chdir(\"%s\")" buffer-directory)))
           (setq default-directory buffer-directory)))
     (message "The buffer is not associated with a directory.")))
 

@@ -124,8 +124,11 @@ If SESSION-NAME is not given, the default session name `main' is assumed."
         (substring bn 8 -1)
       nil)))
 
-(defvar-local python-vterm-repl--launch-timer '()
+(defvar python-vterm-repl--launch-timers '()
   "A timer that is used to determine the interpreter upon launch.")
+
+(defvar-local python-vterm-repl--buffer-id '()
+  "An id to identify the buffer even if it does not exist anymore.")
 
 (defun python-vterm--launch (ses-name env context)
   "Launch a new Python REPL buffer with SES-NAME and ENV.
@@ -137,23 +140,29 @@ python interpreter is ipython.  This times out after
   (let ((new-buffer
          (generate-new-buffer (python-vterm-repl-buffer-name ses-name)))
         (vterm-shell python-vterm-repl-program)
-        (vterm-environment (if context (plist-get context :env) env)))
+        (vterm-environment (if context (plist-get context :env) env))
+        (id (gensym "python-vterm-buffer")))
     (with-current-buffer new-buffer
+      (setq python-vterm-repl--buffer-id id)
       (when context
         (setq default-directory (plist-get context :cwd))
         (setq python-vterm-repl-script-buffer (plist-get context :script-buffer)))
       (python-vterm-repl-mode)
-      (setq python-vterm-repl--launch-timer
-            (run-with-timer 1 1
-                            (lambda (buffer)
-                              (if (python-vterm-repl-prompt-status)
-                                  (progn
-                                    (setq python-vterm-repl-interpreter
-                                          (if (eq (python-vterm--execute-script "is_ipython") :false)
-                                              :python :ipython))
-                                    (cancel-timer python-vterm-repl--launch-timer))
-                                (message "waiting for prompt...")))
-                            new-buffer))
+
+      (push (cons id
+                  (run-with-timer .1 1
+                                  (lambda (buffer)
+                                    (let ((timer (alist-get id python-vterm-repl--launch-timers)))
+                                      (if (and buffer (buffer-live-p buffer))
+                                          (if (python-vterm-repl-prompt-status)
+                                              (progn
+                                                (setq python-vterm-repl-interpreter
+                                                      (if (eq (python-vterm--execute-script "is_ipython") :false)
+                                                          :python :ipython))
+                                                (cancel-timer timer)))
+                                        (cancel-timer timer))))
+                                  new-buffer))
+            python-vterm-repl--launch-timers)
       (add-function :filter-args (process-filter vterm--process)
                     (python-vterm-repl-run-filter-functions-func ses-name)))
     new-buffer))

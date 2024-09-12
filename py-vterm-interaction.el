@@ -164,8 +164,7 @@ python interpreter is ipython.  This times out after
             py-vterm-interaction-repl--launch-timers)
       (add-function :filter-args (process-filter vterm--process)
                     (py-vterm-interaction-repl-run-filter-functions-func ses-name))
-      (setq py-vterm-interaction-session ses-name)
-      (message py-vterm-interaction-session))
+      (setq py-vterm-interaction-session ses-name))
     new-buffer))
 
 (defun py-vterm-interaction-repl-buffer (&optional session-name restart)

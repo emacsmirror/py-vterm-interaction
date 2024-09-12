@@ -6,7 +6,7 @@
 ;; Maintainer: Valentin Boettcher <hiro at protagon.space>
 ;; Created: May 11, 2024
 ;; URL: https://github.com/vale981/python-fancy.el
-;; Package-Requires: ((emacs "25.1") (vterm "0.0.1"))
+;; Package-Requires: ((emacs "27.1") (vterm "0.0.1"))
 ;; Version: 1.0.6
 ;; Keywords: languages, python
 
@@ -629,14 +629,14 @@ If the function has no arguments, the function call is run immediately."
   :init-value nil
   :lighter " PY"
   :keymap
-  `((,(kbd "C-c C-z") . py-vterm-interaction-switch-to-repl-buffer)
-    (,(kbd "C-c C-c") . py-vterm-interaction-send-region-or-current-line)
-    (,(kbd "C-c C-j") . py-vterm-interaction-send-current-cell)
-    (,(kbd "C-c C-f") . py-vterm-interaction-run-current-function)
-    (,(kbd "C-c C-i") . py-vterm-interaction-send-import-buffer-file)
-    (,(kbd "C-c C-b") . py-vterm-interaction-send-buffer)
-    (,(kbd "C-c C-r") . py-vterm-interaction-send-run-buffer-file)
-    (,(kbd "C-c C-d") . py-vterm-interaction-send-cd-to-buffer-directory)))
+  `((,(kbd "C-c C-z") . ,#'py-vterm-interaction-switch-to-repl-buffer)
+    (,(kbd "C-c C-c") . ,#'py-vterm-interaction-send-region-or-current-line)
+    (,(kbd "C-c C-j") . ,#'py-vterm-interaction-send-current-cell)
+    (,(kbd "C-c C-f") . ,#'py-vterm-interaction-run-current-function)
+    (,(kbd "C-c C-i") . ,#'py-vterm-interaction-send-import-buffer-file)
+    (,(kbd "C-c C-b") . ,#'py-vterm-interaction-send-buffer)
+    (,(kbd "C-c C-r") . ,#'py-vterm-interaction-send-run-buffer-file)
+    (,(kbd "C-c C-d") . ,#'py-vterm-interaction-send-cd-to-buffer-directory)))
 
 
 ;;----------------------------------------------------------------------

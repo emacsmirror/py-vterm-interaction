@@ -29,12 +29,13 @@
 
 ;;; Commentary:
 
-;; Provides a major-mode for inferior Python process that runs in vterm, and a
-;; minor-mode that extends python-mode to support interaction with the inferior
-;; Python process.  This is primarily useful for running fancy python shells like
-;; ipython or ptpython.
+;; Provides a major-mode for inferior Python process that runs in
+;; vterm, and a minor-mode that extends python-mode to support
+;; interaction with the inferior Python process.  This is primarily
+;; useful for running fancy python shells like ipython or ptpython.
 ;; This is a straight port of julia-vterm.el by Shigeaki Nishina
-;; (https://github.com/shg/julia-vterm.el) with only minor modifications.
+;; (https://github.com/shg/julia-vterm.el) with some python specific
+;; modifications to provide functionality similar to spyder.
 
 ;;; Usage:
 
@@ -50,7 +51,8 @@
 ;;
 ;; Now you can interact with an inferior Python REPL from a Python buffer.
 ;;
-;; C-c C-z in a python-mode buffer to open an inferior Python REPL buffer.
+;; C-c C-z in a python-mode buffer to open an inferior Python REPL buffer
+;;         optionally specifying a session name with a prefix argument
 ;; C-c C-z in the REPL buffer to switch back to the script buffer.
 ;; C-c C-c in the script buffer to send region or current line to REPL.
 ;;

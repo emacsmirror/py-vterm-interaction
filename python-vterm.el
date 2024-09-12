@@ -161,7 +161,9 @@ python interpreter is ipython.  This times out after
                                   new-buffer))
             python-vterm-repl--launch-timers)
       (add-function :filter-args (process-filter vterm--process)
-                    (python-vterm-repl-run-filter-functions-func ses-name)))
+                    (python-vterm-repl-run-filter-functions-func ses-name))
+      (setq python-vterm-session ses-name)
+      (message python-vterm-session))
     new-buffer))
 
 (defun python-vterm-repl-buffer (&optional session-name restart)
@@ -169,7 +171,7 @@ python interpreter is ipython.  This times out after
 If there exists no such buffer, one is created and returned.
 With non-nil RESTART, the existing buffer will be killed and
 recreated."
-  (let ((ses-name (or session-name "main"))
+  (let ((ses-name (or session-name python-vterm-session "main"))
         (env (cons "TERM=xterm-256color" process-environment)))
     (if-let ((buffer (get-buffer (python-vterm-repl-buffer-name ses-name)))
              (alive (vterm-check-proc buffer))
@@ -405,26 +407,32 @@ inferior Python process and the current active environment."
 (defvar-local python-vterm-context nil)
 
 (defun python-vterm-fellow-repl-buffer (&optional session-name)
-  "Return the paired REPL buffer or the one specified with SESSION-NAME."
-  (if session-name
-      (python-vterm-repl-buffer session-name)
-    (if (buffer-live-p python-vterm-fellow-repl-buffer)
-        python-vterm-fellow-repl-buffer
-      (if python-vterm-session
-          (python-vterm-repl-buffer python-vterm-session)
-        (python-vterm-repl-buffer)))))
+  "Return the paired REPL buffer or the one specified with SESSION-NAME.
+If SESSION-NAME is not specified, try to return the currently
+associated repl buffer or create a new one with the currently
+associated session-name."
+  (let ((session (or session-name python-vterm-session)))
+    (if session
+        (python-vterm-repl-buffer session-name)
+      (if (buffer-live-p python-vterm-fellow-repl-buffer)
+          python-vterm-fellow-repl-buffer
+        (if python-vterm-session
+            (python-vterm-repl-buffer python-vterm-session)
+          (python-vterm-repl-buffer))))))
 
 (defun python-vterm-switch-to-repl-buffer (&optional arg)
   "Switch to the paired REPL buffer or to the one with a specified session name.
-With prefix ARG, prompt for session name."
+With prefix ARG, prompt for session name. If a session name is
+provided all future commands will use that session."
   (interactive "P")
   (let* ((session-name
-          (cond ((null arg) nil)
+          (cond ((null arg) (or python-vterm-session nil))
                 (t (completing-read "Session name: " (python-vterm-repl-list-sessions) nil nil nil nil
                                     (python-vterm-repl-session-name (python-vterm-fellow-repl-buffer))))))
          (script-buffer (current-buffer))
          (repl-buffer (python-vterm-fellow-repl-buffer session-name)))
     (setq python-vterm-fellow-repl-buffer repl-buffer)
+    (setq python-vterm-session session-name)
     (with-current-buffer repl-buffer
       (setq python-vterm-repl-script-buffer script-buffer)
       (switch-to-buffer-other-window repl-buffer))))
@@ -459,21 +467,19 @@ script buffer."
               (newline))))))
   (forward-line))
 
-(defun python-vterm-paste-string (string &optional session-name)
-  "Send STRING to the Python REPL buffer using brackted paste mode.
-If SESSION-NAME is given, the REPL with the session name, otherwise
-the main REPL, is used."
-  (with-current-buffer (python-vterm-fellow-repl-buffer session-name)
+(defun python-vterm-paste-string (string)
+  "Send STRING to the Python REPL buffer using brackted paste mode."
+  (with-current-buffer (python-vterm-fellow-repl-buffer)
     (goto-char (point-max))
     (when python-vterm-paste-with-clear
-      (python-vterm-clear-line session-name))
+      (python-vterm-clear-line))
     (vterm-send-string string t)
     (if python-vterm-paste-with-return
         (python-vterm-send-return-key))))
 
-(defun python-vterm-clear-line (&optional session-name)
+(defun python-vterm-clear-line ()
   "Clear the current line in the Python REPL buffer."
-  (with-current-buffer (python-vterm-fellow-repl-buffer session-name)
+  (with-current-buffer (python-vterm-fellow-repl-buffer)
     (goto-char (point-max))
     (vterm-send-key (kbd "C-a"))
     (vterm-send-key (kbd "C-k"))))

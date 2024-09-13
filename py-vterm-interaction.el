@@ -76,7 +76,9 @@ or an absolute path name, like /usr/local/bin/python
 parameters may be used, like python -q")
 
 (defvar-local py-vterm-interaction-silent-cells nil
-  "If non-nil, the PYTHON-VTERM-SEND-CURRENT-CELL will use ipythons `%run` magic to run a code cell.
+  "Controls whether to paste code into the repl.
+If non-nil, the PYTHON-VTERM-SEND-CURRENT-CELL will use ipythons
+`%run` magic to run a code cell.
 
 For plain python `exec(open(...).read())` is used.")
 
@@ -203,9 +205,10 @@ recreated."
 
 (defun py-vterm-interaction-repl (&optional arg)
   "Create an inferior Python REPL buffer and open it.
-The buffer name will be `*python:main*' where `main' is the default session name.
-With prefix ARG, prompt for a session name.
-If there's already an alive REPL buffer for the session, it will be opened."
+The buffer name will be `*python:main*' where `main' is the
+default session name.  With prefix ARG, prompt for a session
+name.  If there's already an alive REPL buffer for the session,
+it will be opened."
   (interactive "P")
   (let* ((session-name
           (cond ((null arg) nil)
@@ -247,7 +250,7 @@ If there's already an alive REPL buffer for the session, it will be opened."
   "List of filter functions that process the output to the REPL buffer.")
 
 (defun py-vterm-interaction-repl-run-filter-functions-func (session)
-  "Return a function that runs registered filter functions for SESSION with args."
+  "Return a function that run registered filter functions for SESSION with args."
   (lambda (args)
     (with-current-buffer (py-vterm-interaction-repl-buffer session)
       (let ((proc (car args))
@@ -423,7 +426,7 @@ associated session-name."
 
 (defun py-vterm-interaction-switch-to-repl-buffer (&optional arg)
   "Switch to the paired REPL buffer or to the one with a specified session name.
-With prefix ARG, prompt for session name. If a session name is
+With prefix ARG, prompt for session name.  If a session name is
 provided all future commands will use that session."
   (interactive "P")
   (let* ((session-name
@@ -499,13 +502,17 @@ script buffer."
     (py-vterm-interaction-send-current-line)))
 
 (defun py-vterm-interaction--load-file (file &optional comment)
-  "Load the content of the file with FILE into the Python REPL buffer."
+  "Load the content of the file with FILE into the Python REPL buffer.
+Optional argument COMMENT will be appended as a comment in the repl."
   (if (eq py-vterm-interaction-repl-interpreter :ipython)
       (format "%%run -i %s # %s" file (or comment ""))
     (format "exec(open(\"%s\").read()) # %s" file comment)))
 
 (defun py-vterm-interaction--send-maybe-silent (string &optional comment)
-  "Send STRING to the Python REPL buffer, possibly using `%run -i' with a temp file."
+  "Send STRING to the Python REPL buffer.
+If PY-VTERM-INTERACTION--SEND-MAYBE-SILENT is non-nil, uses
+`%run -i' with a temp file.  Optional argument COMMENT will be
+appended as a comment in the repl."
 
   (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
     (if py-vterm-interaction-silent-cells

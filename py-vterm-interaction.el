@@ -622,7 +622,7 @@ If the function has no arguments, the function call is run immediately."
           (setq default-directory buffer-directory)))
     (message "The buffer is not associated with a directory.")))
 
-(defalias 'py-vterm-interaction-sync-wd 'py-vterm-interaction-send-cd-to-buffer-directory)
+(defalias 'py-vterm-interaction-sync-wd '#py-vterm-interaction-send-cd-to-buffer-directory)
 
 (defun py-vterm-interaction-fellow-repl-prompt-status ()
   "Return REPL mode or nil if REPL is not ready for input."
@@ -648,7 +648,7 @@ If the function has no arguments, the function call is run immediately."
 ;;----------------------------------------------------------------------
 ;; Define some utility aliases but not override if the names are already used.
 (unless (fboundp 'python)
-  (defalias 'python 'py-vterm-interaction-repl))
+  (defalias 'python '#py-vterm-interaction-repl))
 
 (unless (boundp 'python-session)
   (defvaralias 'python-session 'py-vterm-interaction-session))

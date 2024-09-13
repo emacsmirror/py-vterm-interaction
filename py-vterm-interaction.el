@@ -5,7 +5,7 @@
 ;; Author: Shigeaki Nishina, Valentin Boettcher
 ;; Maintainer: Valentin Boettcher <hiro at protagon.space>
 ;; Created: May 11, 2024
-;; URL: https://github.com/vale981/python-fancy.el
+;; URL: https://github.com/vale981/py-vterm-interaction.el
 ;; Package-Requires: ((emacs "27.1") (vterm "0.0.1"))
 ;; Version: 1.0.6
 ;; Keywords: languages, python

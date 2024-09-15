@@ -116,6 +116,13 @@ If in doubt, set this to :python.")
   :type 'number
   :group 'py-vterm-interaction-repl)
 
+(defvar-local py-vterm-interaction-paste-with-return t
+  "Whether to send a return key after pasting a string to the Python REPL.")
+
+(defvar-local py-vterm-interaction-paste-with-clear t
+  "Whether to clear the line before pasting a string to the Python REPL.")
+
+
 (defun py-vterm-interaction-repl-buffer-name (&optional session-name)
   "Return a Python REPL buffer name whose session name is SESSION-NAME.
 If SESSION-NAME is not given, the default session name `main' is assumed."
@@ -399,12 +406,6 @@ inferior Python process and the current active environment."
   "Hook run after starting a Python script buffer with an inferior Python REPL."
   :type 'hook
   :group 'py-vterm-interaction)
-
-(defvar-local py-vterm-interaction-paste-with-return t
-  "Whether to send a return key after pasting a string to the Python REPL.")
-
-(defvar-local py-vterm-interaction-paste-with-clear t
-  "Whether to clear the line before pasting a string to the Python REPL.")
 
 (defvar-local py-vterm-interaction-fellow-repl-buffer nil)
 (defvar-local py-vterm-interaction-session nil)

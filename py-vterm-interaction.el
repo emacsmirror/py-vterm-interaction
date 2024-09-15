@@ -61,6 +61,7 @@
 ;;; Code:
 
 (require 'vterm)
+(require 'python)
 (require 'rx)
 
 

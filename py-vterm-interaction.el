@@ -634,7 +634,7 @@ python vterm buffer."
 
 ;;;###autoload
 (define-minor-mode py-vterm-interaction-mode
-  "A minor mode for a Python script buffer that interacts with an inferior Python REPL."
+  "A minor for python script buffers to interact with an inferior Python REPL."
   :init-value nil
   :lighter " PY"
   :keymap

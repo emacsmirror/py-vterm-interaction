@@ -645,15 +645,6 @@ If the function has no arguments, the function call is run immediately."
     (,(kbd "C-c C-d") . ,#'py-vterm-interaction-send-cd-to-buffer-directory)))
 
 
-;;----------------------------------------------------------------------
-;; Define some utility aliases but not override if the names are already used.
-(unless (fboundp 'python)
-  (defalias 'python '#py-vterm-interaction-repl))
-
-(unless (boundp 'python-session)
-  (defvaralias 'python-session 'py-vterm-interaction-session))
-
-
 (provide 'py-vterm-interaction)
 
 ;;; py-vterm-interaction.el ends here

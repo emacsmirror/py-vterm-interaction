@@ -494,7 +494,8 @@ script buffer."
   (concat str (if (string= (substring str -1 nil) "\n") "" "\n")))
 
 (defun py-vterm-interaction-send-region-or-current-line ()
-  "Send the content of the region if the region is active, or send the current line."
+  "Send the content of the region if the region is active.
+Otherwise, send the current line."
   (interactive)
   (if (use-region-p)
       (let ((str (buffer-substring-no-properties (region-beginning) (region-end))))
@@ -596,7 +597,8 @@ If the function has no arguments, the function call is run immediately."
 (defun py-vterm-interaction-send-run-buffer-file ()
   "Run the current buffer file in the python vterm buffer.
 
-  This is equivalent to running `%run -i <buffer-file-name>` in the python vterm buffer."
+This is equivalent to running `%run -i <buffer-file-name>` in the
+python vterm buffer."
   (interactive)
   (let ((file buffer-file-name)
         (py-vterm-interaction-paste-with-return t))

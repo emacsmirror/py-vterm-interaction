@@ -123,6 +123,14 @@ If in doubt, set this to :python.")
 (defvar-local py-vterm-interaction-paste-with-clear t
   "Whether to clear the line before pasting a string to the Python REPL.")
 
+(defvar-local py-vterm-interaction-fellow-repl-buffer nil
+  "The REPL buffer associated with the python buffer.")
+
+(defvar-local py-vterm-interaction-session nil
+  "The name of the session associated with a REPL or python buffer.")
+
+(defvar-local py-vterm-interaction-context nil
+  "Information about the environment and python session of the REPL buffer.")
 
 (defun py-vterm-interaction-repl-buffer-name (&optional session-name)
   "Return a Python REPL buffer name whose session name is SESSION-NAME.
@@ -174,7 +182,7 @@ python interpreter is ipython.  This times out after
             py-vterm-interaction-repl--launch-timers)
       (add-function :filter-args (process-filter vterm--process)
                     (py-vterm-interaction-repl-run-filter-functions-func ses-name))
-      (setq py-vterm-interaction-session ses-name))
+      (setq-local py-vterm-interaction-session ses-name))
     new-buffer))
 
 (defun py-vterm-interaction-repl-buffer (&optional session-name restart)
@@ -238,7 +246,7 @@ it will be opened."
                          nil)))
     (if script-buffer
         (with-current-buffer script-buffer
-          (setq py-vterm-interaction-fellow-repl-buffer repl-buffer)
+          (setq-local py-vterm-interaction-fellow-repl-buffer repl-buffer)
           (switch-to-buffer-other-window script-buffer)))))
 
 (defun py-vterm-interaction-repl-restart ()
@@ -407,10 +415,6 @@ inferior Python process and the current active environment."
   "Hook run after starting a Python script buffer with an inferior Python REPL."
   :type 'hook
   :group 'py-vterm-interaction)
-
-(defvar-local py-vterm-interaction-fellow-repl-buffer nil)
-(defvar-local py-vterm-interaction-session nil)
-(defvar-local py-vterm-interaction-context nil)
 
 (defun py-vterm-interaction-fellow-repl-buffer (&optional session-name)
   "Return the paired REPL buffer or the one specified with SESSION-NAME.

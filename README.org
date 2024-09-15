@@ -1,5 +1,6 @@
 # -*- eval: (visual-line-mode 1) -*-
 #+STARTUP: showall
+[[https://melpa.org/packages/py-vterm-interaction-badge.svg]]
 
 This is a port of [[https://github.com/shg/julia-vterm.el][julia-vterm.el]] with some modification to deal with
 python (virtual) environments and play nicely with =ipython= and the
@@ -12,8 +13,7 @@ cells (see below) or running the current function.
 See also [[https://github.com/shg/python-vterm.el][the original author's efforts]].
 
 * py-vterm-interaction
-
-Python-vterm provides a major-mode for an inferior Python process (or REPL) that runs in vterm, and a minor-mode that extends python-mode with the ability to interact with the inferior Python process. This is particularly useful for *fancy repls like =ipython= or =ptpython=*.
+Python-vterm provides a major-mode for an inferior Python process (or REPL) that runs in [[https://github.com/akermu/emacs-libvterm][vterm]], and a minor-mode that extends python-mode with the ability to interact with the inferior Python process. This is particularly useful for fancy REPL like =ipython= or =ptpython=.
 
 The functionalities required for typical REPL interaction have been implemented. While I would like to keep this package simple, suggestions are always welcome.
 
@@ -21,15 +21,16 @@ It is automatically detected whether the repl runs =ipython= or another
 interpreter and some functions use different functionalities based on
 that information.
 ** Installation
-Currently you can only install the package from github. With
-~use-package~ and ~straight~ it looks as follows:
+The package is on melpa and depends on ~vterm~ and ~python.el~.  The
+simplest way to install the package is through ~use-package~:
 #+begin_src elisp
   (use-package py-vterm-interaction
-    :straight (:host github :repo "vale981/py-vterm-interaction.el")
     :hook (python-mode . py-vterm-interaction-mode)
     :config
-    (setq-default py-vterm-interaction-repl-program "ipython")
-    (setq-default py-vterm-interaction-silent-cells t))
+    ;;; Suggested:
+    ;; (setq-default py-vterm-interaction-repl-program "ipython")
+    ;; (setq-default py-vterm-interaction-silent-cells t)
+    )
 #+end_src
 
 For manual installation, download =py-vterm-interaction.el= into somewhere in your local directory and use =package-install-file= command. Please make sure [[https://github.com/PythonEditorSupport/python-emacs][python-mode]] and [[https://github.com/akermu/emacs-libvterm][emacs-libvterm]] are installed and configured correctly.
@@ -73,6 +74,7 @@ The package also contains a clone of [[https://docs.spyder-ide.org/3/editor.html
   # %% <optional title>
   print("block 3")
 #+end_src
+
 Moving the point between any two cell markers (or between the buffer
 beginning/end and a marker) and executing
 ~py-vterm-interaction-send-current-cell~ (=C-c C-j=) will send the contents of the
@@ -181,7 +183,6 @@ C-c C-r     vterm-reset-cursor-point
 ** TODO fix the automatic return
 - most commands should accept a prefix that control whether the code
   is exectued with =<enter>= or just pasted into the repl
-** TODO overhaul session management
 ** TODO make an =in-repl-buffer= macro
 ** TODO make run-current-function a bit more intelligent
 - detect if there are only arguments with default values

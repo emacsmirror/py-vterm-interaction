@@ -6,7 +6,7 @@
 ;; Maintainer: Valentin Boettcher <hiro at protagon.space>
 ;; Created: May 11, 2024
 ;; URL: https://github.com/vale981/py-vterm-interaction.el
-;; Package-Requires: ((emacs "27.1") (vterm "0.0.1"))
+;; Package-Requires: ((emacs "27.1") (vterm "0.0.2") (python "0.28"))
 ;; Version: 1.0.6
 ;; Keywords: languages, python
 

@@ -622,7 +622,7 @@ If the function has no arguments, the function call is run immediately."
           (setq default-directory buffer-directory)))
     (message "The buffer is not associated with a directory.")))
 
-(defalias 'py-vterm-interaction-sync-wd '#py-vterm-interaction-send-cd-to-buffer-directory)
+(defalias 'py-vterm-interaction-sync-wd #'py-vterm-interaction-send-cd-to-buffer-directory)
 
 (defun py-vterm-interaction-fellow-repl-prompt-status ()
   "Return REPL mode or nil if REPL is not ready for input."

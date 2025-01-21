@@ -148,6 +148,19 @@ If SESSION-NAME is not given, the default session name `main' is assumed."
   "A timer that is used to determine the interpreter upon launch.")
 
 
+(defun py-vterm-interaction--ipython-delete-history-string (num)
+  "Return python code  to remove the last NUM ipython history entries.
+If the interpreter is not ipython an empty string is returned."
+  (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
+    (if (eq py-vterm-interaction-repl-interpreter :ipython)
+        (format (concat "hismgr = get_ipython().history_manager;"
+                        "session_id = hismgr.get_last_session_id();"
+                        "hismgr.db.execute('DELETE from history where rowid in"
+                        " (Select rowid FROM history WHERE session={0} order by "
+                        "line DESC LIMIT %i)'.format(hismgr.get_last_session_id()))"
+                        ";del hismgr") num)
+      "")))
+
 (defun py-vterm-interaction--launch (ses-name env context)
   "Launch a new Python REPL buffer with SES-NAME and ENV.
 
@@ -166,20 +179,24 @@ python interpreter is ipython.  This times out after
         (setq py-vterm-interaction-repl-script-buffer (plist-get context :script-buffer)))
       (py-vterm-interaction-repl-mode)
 
-      (push (cons id
-                  (run-with-timer .1 1
-                                  (lambda (buffer)
-                                    (let ((timer (alist-get id py-vterm-interaction-repl--launch-timers)))
-                                      (if (and buffer (buffer-live-p buffer))
-                                          (if (py-vterm-interaction-repl-prompt-status)
-                                              (progn
-                                                (setq py-vterm-interaction-repl-interpreter
-                                                      (if (eq (py-vterm-interaction--execute-script "is_ipython") :false)
-                                                          :python :ipython))
-                                                (cancel-timer timer)))
-                                        (cancel-timer timer))))
-                                  new-buffer))
-            py-vterm-interaction-repl--launch-timers)
+      (push
+       (cons id
+             (run-with-timer .1 1
+                             (lambda (buffer)
+                               (let ((timer (alist-get id py-vterm-interaction-repl--launch-timers)))
+                                 (if (and buffer (buffer-live-p buffer))
+                                     (if (py-vterm-interaction-repl-prompt-status)
+                                         (progn
+                                           (setq py-vterm-interaction-repl-interpreter
+                                                 (if (eq (py-vterm-interaction--execute-script "is_ipython") :false)
+                                                     :python :ipython))
+                                           (cancel-timer timer)
+                                           (if (eq py-vterm-interaction-repl-interpreter :ipython)
+                                               (progn
+                                                 (py-vterm-interaction--execute-script "delete_history" 1)))))
+                                   (cancel-timer timer))))
+                             new-buffer))
+       py-vterm-interaction-repl--launch-timers)
       (add-function :filter-args (process-filter vterm--process)
                     (py-vterm-interaction-repl-run-filter-functions-func ses-name))
       (setq-local py-vterm-interaction-session ses-name))
@@ -334,6 +351,10 @@ will be cleaned up afterwards."
     ;; clean up all utility stuff
     (py-vterm-interaction-paste-string "del dump_json;")
     (py-vterm-interaction-paste-string (format "del %s" name))
+    (py-vterm-interaction-send-return-key)
+
+
+    (py-vterm-interaction-paste-string (py-vterm-interaction--ipython-delete-history-string 2))
     (py-vterm-interaction-send-return-key)
 
     (with-timeout (py-vterm-interaction-repl-script-timeout
@@ -520,13 +541,15 @@ Optional argument COMMENT will be appended as a comment in the repl."
 If PY-VTERM-INTERACTION--SEND-MAYBE-SILENT is non-nil, uses
 `%run -i' with a temp file.  Optional argument COMMENT will be
 appended as a comment in the repl."
-
   (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
     (if py-vterm-interaction-silent-cells
         (let ((tmpfile (make-temp-file "py-vterm-interaction" nil ".py")))
           (with-temp-file tmpfile
-            (insert string))
-          (py-vterm-interaction-paste-string (py-vterm-interaction--load-file tmpfile comment))
+            (insert string)
+            (insert "\n")
+            (insert (py-vterm-interaction--ipython-delete-history-string 1)))
+          (py-vterm-interaction-paste-string
+           (py-vterm-interaction--load-file tmpfile comment))
           (run-with-timer 10 nil
                           (lambda (tmpfile)
                             (delete-file tmpfile))

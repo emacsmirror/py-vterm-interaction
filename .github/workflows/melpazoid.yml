@@ -20,8 +20,8 @@ jobs:
       - name: Run
         env:
           LOCAL_REPO: ${{ github.workspace }}
-          RECIPE: (py-vterm-interaction :repo "vale981/py-vterm-interaction.el" :fetcher github)
+          RECIPE: (py-vterm-interaction :fetcher github :repo "vale981/py-vterm-interaction.el")
           # set this to false (or remove it) if the package isn't on MELPA:
-          EXIST_OK: false
+          EXIST_OK: true
         run: |
           echo $GITHUB_REF && make -C ~/melpazoid

@@ -560,36 +560,50 @@ point, the cell is assumed to end with the buffer."
   "Send the current function the Python REPL and paste its name, ready to run.
 If the function has no arguments, the function call is run immediately."
   (interactive)
-  (let* ((function-name-regex "def[ \t]+\\([a-zA-Z_][a-zA-Z0-9_]*\\)[ \t]*(\\(.*\\)):"))
-    (save-mark-and-excursion
-      (python-mark-defun)
-      (let ((name-found (save-mark-and-excursion (re-search-forward function-name-regex (mark) t))))
-        (if name-found
-            (let ((name (match-string 1))
-                  (args (match-string 2))
-                  (py-vterm-interaction-paste-with-return nil)
-                  (begin (region-beginning))
-                  (end (region-end)))
+  (save-mark-and-excursion
+    ;; (let ((last-mark (mark)))
+    ;;   (python-mark-defun)
+    ;;   (while (not (eq (mark) last-mark))
+    ;;     (setf last-mark (mark))
+    ;;     (python-mark-defun 1)))
+    ;; (mark (region-beginning))
+    ;; (next-line)
+    ;; (cl-return)
+    (let ((begin (save-mark-and-excursion
+                   (python-nav-beginning-of-defun 1)
+                   (point)))
+          (end (save-mark-and-excursion
+                 (python-nav-end-of-defun)
+                 (point))))
+      (python-nav-beginning-of-defun 1)
+      (next-line)
+      (let ((function-name-regex "def[ \t]+\\([a-zA-Z_][a-zA-Z0-9_]*\\)[ \t]*(\\(.*\\))\\([ \t]*->[ \t]*.*?\\)?:"))
+        (save-match-data
+          (let ((name-found (re-search-backward function-name-regex nil nil)))
+            (if name-found
+                (progn
+                  (let ((name (match-string 1))
+                        (args (match-string 2))
+                        (py-vterm-interaction-paste-with-return nil))
 
-              ;; capture decorators too
-              (save-excursion
-                (while
-                    (progn (forward-line -1)
-                           (beginning-of-line)
-                           (if (looking-at "@")
-                               (setq begin (point))
-                             nil))))
+                    ;; capture decorators too
+                    (save-excursion
+                      (while
+                          (progn (forward-line -1)
+                                 (beginning-of-line)
+                                 (if (looking-at "@")
+                                     (setq begin (point))
+                                   nil))))
 
-              (let ((func (buffer-substring-no-properties begin end)))
-                (py-vterm-interaction--send-maybe-silent func name)
-                (py-vterm-interaction-send-return-key))
-
-              (if (string-empty-p args)
-                  (progn
-                    (py-vterm-interaction-paste-string (format "%s()" name))
-                    (py-vterm-interaction-send-return-key))
-                (py-vterm-interaction-paste-string (format "%s(" name))))
-          (message "No function found"))))))
+                    (let ((func (buffer-substring-no-properties begin end)))
+                      (py-vterm-interaction--send-maybe-silent func name)
+                      (py-vterm-interaction-send-return-key))
+                    (if (= 0 (length args))
+                        (progn
+                          (py-vterm-interaction-paste-string (format "%s() " name))
+                          (py-vterm-interaction-send-return-key))
+                      (py-vterm-interaction-paste-string (format "%s(" name)))))
+              (message "No function found"))))))))
 
 (defun py-vterm-interaction-send-buffer ()
   "Send the whole content of the script buffer to the Python REPL line by line."

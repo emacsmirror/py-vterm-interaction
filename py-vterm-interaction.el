@@ -644,6 +644,16 @@ python vterm buffer."
           (setq default-directory buffer-directory)))
     (message "The buffer is not associated with a directory.")))
 
+(defun py-vterm-interaction-send-rerun-last ()
+  "Rerun last repl command.
+
+(Send C-p <return>)"
+  (interactive)
+  (py-vterm-interaction-clear-line)
+  (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
+    (vterm-send-key (kbd "C-p"))
+    (py-vterm-interaction-send-return-key)))
+
 (defalias 'py-vterm-interaction-sync-wd #'py-vterm-interaction-send-cd-to-buffer-directory)
 
 (defun py-vterm-interaction-fellow-repl-prompt-status ()
@@ -664,7 +674,8 @@ python vterm buffer."
     (,(kbd "C-c C-i") . ,#'py-vterm-interaction-send-import-buffer-file)
     (,(kbd "C-c C-b") . ,#'py-vterm-interaction-send-buffer)
     (,(kbd "C-c C-r") . ,#'py-vterm-interaction-send-run-buffer-file)
-    (,(kbd "C-c C-d") . ,#'py-vterm-interaction-send-cd-to-buffer-directory)))
+    (,(kbd "C-c C-d") . ,#'py-vterm-interaction-send-cd-to-buffer-directory)
+    (,(kbd "C-c C-a") . ,#'py-vterm-interaction-send-rerun-last)))
 
 
 (provide 'py-vterm-interaction)

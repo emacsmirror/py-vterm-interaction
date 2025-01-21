@@ -143,6 +143,9 @@ C-c C-i     Import the current buffer file like `from <module> import *' in the 
 C-c C-d     py-vterm-interaction-send-cd-to-buffer-directory
             Send %cd function call to the Python REPL to change the current working
             directory of REPL to the buffer's directory.
+
+C-c C-a     py-vterm-interaction-send-rerun-last
+            Send C-p <return> to the repl to rerun the last line entered.
 #+end_example
 
 *** py-vterm-interaction-repl-mode

@@ -504,7 +504,7 @@ Otherwise, send the current line."
   (interactive)
   (if (use-region-p)
       (let ((str (buffer-substring-no-properties (region-beginning) (region-end))))
-        (py-vterm-interaction-paste-string str)
+        (py-vterm-interaction--send-maybe-silent str "region")
         (deactivate-mark))
     (py-vterm-interaction-send-current-line)))
 

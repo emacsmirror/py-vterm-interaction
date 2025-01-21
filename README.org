@@ -116,7 +116,8 @@ C-c C-z     py-vterm-interaction-switch-to-repl-buffer
 
 C-c C-c     py-vterm-interaction-send-region-or-current-line
             Send the content of the region if the region is active, or send the current
-            line.
+            line. If the region is active and py-vterm-interaction-silent-cells is set to t
+            then the region is sent using ipython %run magic.
 
 C-c C-b     py-vterm-interaction-send-buffer
             Send the whole content of the script buffer to the Python REPL line by line.

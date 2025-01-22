@@ -7,7 +7,7 @@
 ;; Created: May 11, 2024
 ;; URL: https://github.com/vale981/py-vterm-interaction.el
 ;; Package-Requires: ((emacs "27.1") (vterm "0.0.2") (python "0.28"))
-;; Version: 1.0.7
+;; Version: 1.0.8
 ;; Keywords: languages, python
 
 ;; This file is not part of GNU Emacs.

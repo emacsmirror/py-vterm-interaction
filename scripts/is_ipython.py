@@ -1,5 +1,5 @@
 def is_ipython(tempfile):
     try:
-        return dump_json(tempfile, __IPYTHON__)
+        return pyvterm_dump_json(tempfile, __IPYTHON__)
     except NameError:
-        return dump_json(tempfile, False)
+        return pyvterm_dump_json(tempfile, False)

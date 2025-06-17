@@ -8,4 +8,4 @@ only use standard python functionality.
 Each function must take a file path as its first argument and write
 its output as json to that path. All functions in =utility.py= are
 available to call in each script without importing them. Among the is
-~dump_json([path], [value])~.
+~pyvterm_dump_json([path], [value])~.

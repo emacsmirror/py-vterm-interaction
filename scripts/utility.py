@@ -1,4 +1,4 @@
-def dump_json(tempfile, value):
+def pyvterm_dump_json(tempfile, value):
     import json
 
     with open(tempfile, "w") as f:

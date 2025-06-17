@@ -18,4 +18,4 @@ def star_import_script(tmpfile, path):
     # now drag them in
     globals().update({k: getattr(mdl, k) for k in names})
 
-    dump_json(tmpfile, True)
+    pyvterm_dump_json(tmpfile, True)

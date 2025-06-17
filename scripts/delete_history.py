@@ -1,7 +1,7 @@
 def delete_history(tmpfile, num):
     try:
         if not __IPYTHON__:
-            dump_json(tmpfile, False)
+            pyvterm_dump_json(tmpfile, False)
             return
 
         hismgr = get_ipython().history_manager
@@ -11,7 +11,7 @@ def delete_history(tmpfile, num):
             )
         )
         del hismgr
-        dump_json(tmpfile, True)
+        pyvterm_dump_json(tmpfile, True)
 
     except NameError:
-        dump_json(tmpfile, True)
+        pyvterm_dump_json(tmpfile, True)

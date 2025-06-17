@@ -329,11 +329,13 @@ arguments ARGS and the result is returned as a parsed JSON object
 in the plist format.  The functions from the utility script are
 loaded into the repl as well.  All loaded functions and modules
 will be cleaned up afterwards."
-  (let ((utility-file (py-vterm-interaction--get-script-file name))
-        (script-file (py-vterm-interaction--get-script-file "utility"))
+  (let ((utility-file (py-vterm-interaction--get-script-file "utility"))
+        (script-file (py-vterm-interaction--get-script-file name))
         (tmpfile (make-temp-file "py-vterm-interaction--" nil ".json"))
         (py-vterm-interaction-paste-with-return nil)
         (py-vterm-interaction-paste-with-clear nil)
+        (buffer-dir (file-name-directory (with-current-buffer py-vterm-interaction-repl-script-buffer
+                                           buffer-file-name)))
         (arglist (concat
                   (seq-reduce
                    (lambda (el rest)
@@ -344,12 +346,15 @@ will be cleaned up afterwards."
         (result nil))
 
     (py-vterm-interaction-clear-line)
-    (py-vterm-interaction-paste-string (format "exec(open(\"%s\").read());" utility-file))
-    (py-vterm-interaction-paste-string (format "exec(open(\"%s\").read());" script-file))
+    (py-vterm-interaction-paste-string
+     (fromat "exec(open(%S).read());" utility-file))
+    (py-vterm-interaction-paste-string
+     (format "exec(\"\"\"import os as pyvterm_os;pyvterm_os.chdir(%S)\n\"\"\" + open(%S).read());"
+             buffer-dir script-file))
     (py-vterm-interaction-paste-string (format "%s(\"%s\"%s);" name tmpfile arglist))
 
     ;; clean up all utility stuff
-    (py-vterm-interaction-paste-string "del dump_json;")
+    (py-vterm-interaction-paste-string "del pyvterm_dump_json;")
     (py-vterm-interaction-paste-string (format "del %s" name))
     (py-vterm-interaction-send-return-key)
 
@@ -541,20 +546,27 @@ Optional argument COMMENT will be appended as a comment in the repl."
 If PY-VTERM-INTERACTION--SEND-MAYBE-SILENT is non-nil, uses
 `%run -i' with a temp file.  Optional argument COMMENT will be
 appended as a comment in the repl."
-  (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
-    (if py-vterm-interaction-silent-cells
-        (let ((tmpfile (make-temp-file "py-vterm-interaction" nil ".py")))
-          (with-temp-file tmpfile
-            (insert string)
-            (insert "\n")
-            (insert (py-vterm-interaction--ipython-delete-history-string 1)))
-          (py-vterm-interaction-paste-string
-           (py-vterm-interaction--load-file tmpfile comment))
-          (run-with-timer 10 nil
-                          (lambda (tmpfile)
-                            (delete-file tmpfile))
-                          tmpfile))
-      (py-vterm-interaction-paste-string string))))
+  (let ((buffer-file buffer-file-name)
+        (buffer-dir (file-name-directory buffer-file-name)))
+    (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
+      (if py-vterm-interaction-silent-cells
+          (let ((tmpfile (make-temp-file "py-vterm-interaction" nil ".py")))
+            (with-temp-file tmpfile
+              (insert "import os as pyvterm_os\n")
+              (insert (format "pyvterm_os.chdir(\"%s\")\n" buffer-dir))
+              (insert (format "__file__ = \"%s\"\n" buffer-file))
+              (insert string)
+              (insert "\n")
+              (insert (py-vterm-interaction--ipython-delete-history-string 1))
+
+              (insert "\ndel pyvterm_os"))
+            (py-vterm-interaction-paste-string
+             (py-vterm-interaction--load-file tmpfile comment))
+            (run-with-timer 10 nil
+                            (lambda (tmpfile)
+                              (delete-file tmpfile))
+                            tmpfile))
+        (py-vterm-interaction-paste-string string)))))
 
 (defun py-vterm-interaction-send-current-cell ()
   "Send the current code \"cell\" to the Python REPL.
@@ -661,7 +673,7 @@ python vterm buffer."
         (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
           (py-vterm-interaction-paste-string (if (eq py-vterm-interaction-repl-interpreter :ipython)
                                                  (format "%%cd %s" buffer-directory)
-                                               (format "import os; os.chdir(\"%s\")" buffer-directory)))
+                                               (format "import os as pyvterm_os; pyvterm_os.chdir(\"%s\")" buffer-directory)))
           (setq default-directory buffer-directory)))
     (message "The buffer is not associated with a directory.")))
 

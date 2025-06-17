@@ -184,9 +184,5 @@ C-c C-r     vterm-reset-cursor-point
 #+end_example
 
 * Roadmap
-** TODO fix the automatic return
-- most commands should accept a prefix that control whether the code
-  is exectued with =<enter>= or just pasted into the repl
-** TODO make an =in-repl-buffer= macro
 ** TODO make run-current-function a bit more intelligent
 - detect if there are only arguments with default values

@@ -132,6 +132,16 @@ If in doubt, set this to :python.")
 (defvar-local py-vterm-interaction-context nil
   "Information about the environment and python session of the REPL buffer.")
 
+(defmacro py-vterm-interaction-with-output-hidden (&rest body)
+  "Execute BODY but restore the buffer REPL buffer to its previous state."
+  (let ((up-to-now (gensym))
+        (result (gensym)))
+    `(let ((,result (progn
+                      ,@body)))
+       (let ((inhibit-read-only t))
+         (py-vterm-interaction-repl-clear-buffer))
+       ,result)))
+
 (defun py-vterm-interaction-repl-buffer-name (&optional session-name)
   "Return a Python REPL buffer name whose session name is SESSION-NAME.
 If SESSION-NAME is not given, the default session name `main' is assumed."
@@ -153,12 +163,13 @@ If SESSION-NAME is not given, the default session name `main' is assumed."
 If the interpreter is not ipython an empty string is returned."
   (with-current-buffer (py-vterm-interaction-fellow-repl-buffer)
     (if (eq py-vterm-interaction-repl-interpreter :ipython)
-        (format (concat "hismgr = get_ipython().history_manager;"
-                        "session_id = hismgr.get_last_session_id();"
-                        "hismgr.db.execute('DELETE from history where rowid in"
+        (format (concat "pyvterm_hismgr = get_ipython().history_manager;"
+                        "session_id = pyvterm_hismgr.get_last_session_id();"
+                        "pyvterm_hismgr.db.execute('DELETE from history where rowid in"
                         " (Select rowid FROM history WHERE session={0} order by "
-                        "line DESC LIMIT %i)'.format(hismgr.get_last_session_id()))"
-                        ";del hismgr") num)
+                        "line DESC LIMIT %i)'.format(pyvterm_hismgr.get_last_session_id()))"
+                        ";del pyvterm_hismgr")
+                num)
       "")))
 
 (defun py-vterm-interaction--launch (ses-name env context)
@@ -183,18 +194,27 @@ python interpreter is ipython.  This times out after
        (cons id
              (run-with-timer .1 1
                              (lambda (buffer)
-                               (let ((timer (alist-get id py-vterm-interaction-repl--launch-timers)))
-                                 (if (and buffer (buffer-live-p buffer))
-                                     (if (py-vterm-interaction-repl-prompt-status)
-                                         (progn
-                                           (setq py-vterm-interaction-repl-interpreter
-                                                 (if (eq (py-vterm-interaction--execute-script "is_ipython") :false)
-                                                     :python :ipython))
-                                           (cancel-timer timer)
-                                           (if (eq py-vterm-interaction-repl-interpreter :ipython)
-                                               (progn
-                                                 (py-vterm-interaction--execute-script "delete_history" 1)))))
-                                   (cancel-timer timer))))
+                               (with-current-buffer buffer
+                                 (let ((timer (alist-get id py-vterm-interaction-repl--launch-timers)))
+                                   (if (and buffer (buffer-live-p buffer))
+                                       (if (py-vterm-interaction-repl-prompt-status)
+                                           (progn
+                                             (cancel-timer timer)
+                                             (setq py-vterm-interaction-repl-interpreter
+                                                   (if (eq (py-vterm-interaction--execute-script "is_ipython") :false)
+                                                       :python :ipython))
+                                             (py-vterm-interaction-with-output-hidden
+                                              (py-vterm-interaction-paste-string
+                                               (format "__file__ = %S"
+                                                       (with-current-buffer py-vterm-interaction-repl-script-buffer
+                                                         buffer-file-name)))
+                                              (py-vterm-interaction-paste-string (py-vterm-interaction--ipython-delete-history-string 2))
+                                              (py-vterm-interaction-send-return-key))
+
+                                             (if (eq py-vterm-interaction-repl-interpreter :ipython)
+                                                 (progn
+                                                   (py-vterm-interaction--execute-script "delete_history" 1)))))
+                                     (cancel-timer timer)))))
                              new-buffer))
        py-vterm-interaction-repl--launch-timers)
       (add-function :filter-args (process-filter vterm--process)
@@ -316,6 +336,9 @@ Return a corresponding symbol or nil if not ready for input."
   (expand-file-name (concat "./scripts/" name ".py")
                     (file-name-directory (symbol-file 'py-vterm-interaction-mode))))
 
+
+
+
 (defun py-vterm-interaction--execute-script (name &rest args)
   "Load the script with file NAME and call the eponymous function with ARGS.
 Returns either the result of the function or nil if execution
@@ -329,59 +352,56 @@ arguments ARGS and the result is returned as a parsed JSON object
 in the plist format.  The functions from the utility script are
 loaded into the repl as well.  All loaded functions and modules
 will be cleaned up afterwards."
-  (let ((utility-file (py-vterm-interaction--get-script-file "utility"))
-        (script-file (py-vterm-interaction--get-script-file name))
-        (tmpfile (make-temp-file "py-vterm-interaction--" nil ".json"))
-        (py-vterm-interaction-paste-with-return nil)
-        (py-vterm-interaction-paste-with-clear nil)
-        (buffer-dir (file-name-directory (with-current-buffer py-vterm-interaction-repl-script-buffer
-                                           buffer-file-name)))
-        (arglist (concat
-                  (seq-reduce
-                   (lambda (el rest)
-                     (format "%s, \"%s" el rest))
-                   args "")
-                  (if (seq-empty-p args) "" "\"")))
-        (up-to-now (buffer-string))
-        (result nil))
+  (py-vterm-interaction-with-output-hidden
+   (let ((utility-file (py-vterm-interaction--get-script-file "utility"))
+         (script-file (py-vterm-interaction--get-script-file name))
+         (tmpfile (make-temp-file "py-vterm-interaction--" nil ".json"))
+         (py-vterm-interaction-paste-with-return nil)
+         (py-vterm-interaction-paste-with-clear nil)
+         (buffer-dir (file-name-directory (with-current-buffer py-vterm-interaction-repl-script-buffer
+                                            buffer-file-name)))
+         (arglist (concat
+                   (seq-reduce
+                    (lambda (el rest)
+                      (format "%s, \"%s" el rest))
+                    args "")
+                   (if (seq-empty-p args) "" "\"")))
+         (result nil))
 
-    (py-vterm-interaction-clear-line)
-    (py-vterm-interaction-paste-string
-     (fromat "exec(open(%S).read());" utility-file))
-    (py-vterm-interaction-paste-string
-     (format "exec(\"\"\"import os as pyvterm_os;pyvterm_os.chdir(%S)\n\"\"\" + open(%S).read());"
-             buffer-dir script-file))
-    (py-vterm-interaction-paste-string (format "%s(\"%s\"%s);" name tmpfile arglist))
+     (py-vterm-interaction-clear-line)
+     (py-vterm-interaction-paste-string
+      (format "exec(open(%S).read());" utility-file))
+     (py-vterm-interaction-paste-string
+      (format "exec(\"\"\"import os as pyvterm_os;pyvterm_os.chdir(%S)\n\"\"\" + open(%S).read());"
+              buffer-dir script-file))
+     (py-vterm-interaction-paste-string (format "%s(\"%s\"%s);" name tmpfile arglist))
 
-    ;; clean up all utility stuff
-    (py-vterm-interaction-paste-string "del pyvterm_dump_json;")
-    (py-vterm-interaction-paste-string (format "del %s" name))
-    (py-vterm-interaction-send-return-key)
+     ;; clean up all utility stuff
+     (py-vterm-interaction-paste-string "del pyvterm_dump_json;")
+     (py-vterm-interaction-paste-string (format "del %s" name))
+     (py-vterm-interaction-send-return-key)
 
 
-    (py-vterm-interaction-paste-string (py-vterm-interaction--ipython-delete-history-string 2))
-    (py-vterm-interaction-send-return-key)
+     (py-vterm-interaction-paste-string (py-vterm-interaction--ipython-delete-history-string 2))
+     (py-vterm-interaction-send-return-key)
 
-    (with-timeout (py-vterm-interaction-repl-script-timeout
-                   (progn (display-warning 'py-vterm-interaction "Python script did not finish in time.")
-                          (delete-file tmpfile)
-                          nil))
-      (while
-          (progn (with-temp-buffer
-                   (insert-file-contents tmpfile)
-                   (buffer-string)
-                   (if (= (buffer-size) 0)
-                       (progn
-                         (sleep-for 0.1)
-                         t)
-                     (progn
-                       (delete-file tmpfile)
-                       (setq result (json-parse-buffer :object-type 'plist :array-type 'list))
-                       nil)))))
-      (let ((inhibit-read-only t))
-        (py-vterm-interaction-repl-clear-buffer)
-        (insert up-to-now))
-      result)))
+     (with-timeout (py-vterm-interaction-repl-script-timeout
+                    (progn (display-warning 'py-vterm-interaction "Python script did not finish in time.")
+                           (delete-file tmpfile)
+                           nil))
+       (while
+           (progn (with-temp-buffer
+                    (insert-file-contents tmpfile)
+                    (buffer-string)
+                    (if (= (buffer-size) 0)
+                        (progn
+                          (sleep-for 0.1)
+                          t)
+                      (progn
+                        (delete-file tmpfile)
+                        (setq result (json-parse-buffer :object-type 'plist :array-type 'list))
+                        nil)))))
+       result))))
 
 
 (defun py-vterm-interaction--read-script (name)
@@ -543,7 +563,7 @@ Optional argument COMMENT will be appended as a comment in the repl."
 
 (defun py-vterm-interaction--send-maybe-silent (string &optional comment)
   "Send STRING to the Python REPL buffer.
-If PY-VTERM-INTERACTION--SEND-MAYBE-SILENT is non-nil, uses
+If `py-vterm-interaction-silent-cells' is non-nil, uses
 `%run -i' with a temp file.  Optional argument COMMENT will be
 appended as a comment in the repl."
   (let ((buffer-file buffer-file-name)
@@ -558,7 +578,6 @@ appended as a comment in the repl."
               (insert string)
               (insert "\n")
               (insert (py-vterm-interaction--ipython-delete-history-string 1))
-
               (insert "\ndel pyvterm_os"))
             (py-vterm-interaction-paste-string
              (py-vterm-interaction--load-file tmpfile comment))

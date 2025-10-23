@@ -194,22 +194,21 @@ python interpreter is ipython.  This times out after
        (cons id
              (run-with-timer .1 1
                              (lambda (buffer)
-                               (with-current-buffer buffer
-                                 (let ((timer (alist-get id py-vterm-interaction-repl--launch-timers)))
-                                   (if (and buffer (buffer-live-p buffer))
-                                       (if (py-vterm-interaction-repl-prompt-status)
-                                           (progn
-                                             (cancel-timer timer)
-                                             (setq py-vterm-interaction-repl-interpreter
-                                                   (if (eq (py-vterm-interaction--execute-script "is_ipython") :false)
-                                                       :python :ipython))
-                                             (py-vterm-interaction-with-output-hidden
-                                              (py-vterm-interaction-paste-string
-                                               (format "__file__ = %S"
-                                                       (with-current-buffer py-vterm-interaction-repl-script-buffer
-                                                         buffer-file-name)))
-                                              (py-vterm-interaction-paste-string (py-vterm-interaction--ipython-delete-history-string 2))
-                                              (py-vterm-interaction-send-return-key))
+                               (let ((timer (alist-get id py-vterm-interaction-repl--launch-timers)))
+                                 (if (and buffer (buffer-live-p buffer))
+                                     (if (py-vterm-interaction-repl-prompt-status)
+                                         (with-current-buffer buffer
+                                           (cancel-timer timer)
+                                           (setq py-vterm-interaction-repl-interpreter
+                                                 (if (eq (py-vterm-interaction--execute-script "is_ipython") :false)
+                                                     :python :ipython))
+                                           (py-vterm-interaction-with-output-hidden
+                                            (py-vterm-interaction-paste-string
+                                             (format "__file__ = %S"
+                                                     (with-current-buffer py-vterm-interaction-repl-script-buffer
+                                                       buffer-file-name)))
+                                            (py-vterm-interaction-paste-string (py-vterm-interaction--ipython-delete-history-string 2))
+                                            (py-vterm-interaction-send-return-key))
 
                                              (if (eq py-vterm-interaction-repl-interpreter :ipython)
                                                  (progn

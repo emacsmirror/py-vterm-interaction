@@ -210,10 +210,10 @@ python interpreter is ipython.  This times out after
                                             (py-vterm-interaction-paste-string (py-vterm-interaction--ipython-delete-history-string 2))
                                             (py-vterm-interaction-send-return-key))
 
-                                             (if (eq py-vterm-interaction-repl-interpreter :ipython)
-                                                 (progn
-                                                   (py-vterm-interaction--execute-script "delete_history" 1)))))
-                                     (cancel-timer timer)))))
+                                           (if (eq py-vterm-interaction-repl-interpreter :ipython)
+                                               (progn
+                                                 (py-vterm-interaction--execute-script "delete_history" 1)))))
+                                   (cancel-timer timer))))
                              new-buffer))
        py-vterm-interaction-repl--launch-timers)
       (add-function :filter-args (process-filter vterm--process)
@@ -315,19 +315,10 @@ it will be opened."
 (defun py-vterm-interaction-repl-prompt-status ()
   "Check and return the prompt status of the REPL.
 Return a corresponding symbol or nil if not ready for input."
-  (let* ((bs (buffer-string))
-         (tail (substring bs (- (min 256 (length bs))))))
-    (set-text-properties 0 (length tail) nil tail)
-    (let* ((lines (split-string (string-trim-right
-                                 (replace-regexp-in-string
-                                  (rx (1+ bol (0+ whitespace) eol))
-                                  "" tail)
-                                 "[\t\n\r]+")
-                                (char-to-string ?\n)))
-           (prompt (car (last lines))))
-      (pcase prompt
-        ((rx bol ">>> " eol) :python)
-        ((rx bol "In [" (one-or-more (any "0-9")) "]: " eol) :ipython)))))
+  (let* ((bs (buffer-substring-no-properties (point-min) (point-max))))
+    (pcase bs
+      ((rx bol ">>>") :python)
+      ((rx bol "In [" (one-or-more (any "0-9")) "]:") :ipython))))
 
 
 (defun py-vterm-interaction--get-script-file (name)
